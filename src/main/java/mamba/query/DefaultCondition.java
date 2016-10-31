@@ -1,0 +1,321 @@
+package mamba.query;
+
+import mamba.metrics.Precision;
+import mamba.store.PhoenixHBaseAccessor;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * Created by dongbin on 2016/10/10.
+ */
+public class DefaultCondition implements Condition {
+    private static final Log LOG = LogFactory.getLog(DefaultCondition.class);
+    List<String> metricNames;
+    List<String> hostnames;
+    String appId;
+    String instanceId;
+    Long startTime;
+    Long endTime;
+    Precision precision;
+    Integer limit;
+    boolean grouped;
+    boolean noLimit = false;
+    Integer fetchSize;
+    String statement;
+    Set<String> orderByColumns = new LinkedHashSet<String>();
+
+    public DefaultCondition(List<String> metricNames, List<String> hostnames, String appId,
+                            String instanceId, Long startTime, Long endTime, Precision precision,
+                            Integer limit, boolean grouped) {
+        this.metricNames = metricNames;
+        this.hostnames = hostnames;
+        this.appId = appId;
+        this.instanceId = instanceId;
+        this.startTime = startTime;
+        this.endTime = endTime;
+        this.precision = precision;
+        this.limit = limit;
+        this.grouped = grouped;
+    }
+
+    protected static boolean append(StringBuilder sb,
+                                    boolean appendConjunction,
+                                    Object value, String str) {
+        if (value != null) {
+            if (appendConjunction) {
+                sb.append(" AND");
+            }
+
+            sb.append(str);
+            appendConjunction = true;
+        }
+        return appendConjunction;
+    }
+
+    protected static boolean metricNamesHaveWildcard(List<String> metricNames) {
+        for (String name : metricNames) {
+            if (name.contains("%")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    protected static boolean hostNamesHaveWildcard(List<String> hostnames) {
+        if (hostnames == null)
+            return false;
+        for (String name : hostnames) {
+            if (name.contains("%")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public String getStatement() {
+        return statement;
+    }
+
+    public void setStatement(String statement) {
+        this.statement = statement;
+    }
+
+    public List<String> getMetricNames() {
+        return metricNames == null || metricNames.isEmpty() ? null : metricNames;
+    }
+
+    public StringBuilder getConditionClause() {
+        StringBuilder sb = new StringBuilder();
+
+        boolean appendConjunction = appendMetricNameClause(sb);
+
+        appendConjunction = appendHostnameClause(sb, appendConjunction);
+
+        appendConjunction = append(sb, appendConjunction, getAppId(), " APP_ID = ?");
+        appendConjunction = append(sb, appendConjunction, getInstanceId(), " INSTANCE_ID = ?");
+        appendConjunction = append(sb, appendConjunction, getStartTime(), " SERVER_TIME >= ?");
+        append(sb, appendConjunction, getEndTime(), " SERVER_TIME < ?");
+
+        return sb;
+    }
+
+    public List<String> getHostnames() {
+        return hostnames;
+    }
+
+    public Precision getPrecision() {
+        return precision;
+    }
+
+    public void setPrecision(Precision precision) {
+        this.precision = precision;
+    }
+
+    public String getAppId() {
+        if (appId != null && !appId.isEmpty()) {
+            if (!(appId.equals("HOST") || appId.equals("FLUME_HANDLER"))) {
+                return appId.toLowerCase();
+            } else {
+                return appId;
+            }
+        }
+        return null;
+    }
+
+    public String getInstanceId() {
+        return instanceId == null || instanceId.isEmpty() ? null : instanceId;
+    }
+
+    /**
+     * Convert to millis.
+     */
+    public Long getStartTime() {
+        if (startTime == null) {
+            return null;
+        } else if (startTime < 9999999999l) {
+            return startTime * 1000;
+        } else {
+            return startTime;
+        }
+    }
+
+    public Long getEndTime() {
+        if (endTime == null) {
+            return null;
+        }
+        if (endTime < 9999999999l) {
+            return endTime * 1000;
+        } else {
+            return endTime;
+        }
+    }
+
+    public void setNoLimit() {
+        this.noLimit = true;
+    }
+
+    @Override
+    public boolean doUpdate() {
+        return false;
+    }
+
+    public Integer getLimit() {
+        if (noLimit) {
+            return null;
+        }
+        return limit == null ? PhoenixHBaseAccessor.RESULTSET_LIMIT : limit;
+    }
+
+    public boolean isGrouped() {
+        return grouped;
+    }
+
+    public boolean isPointInTime() {
+        return getStartTime() == null && getEndTime() == null;
+    }
+
+    public boolean isEmpty() {
+        return (metricNames == null || metricNames.isEmpty())
+                && (hostnames == null || hostnames.isEmpty())
+                && (appId == null || appId.isEmpty())
+                && (instanceId == null || instanceId.isEmpty())
+                && startTime == null
+                && endTime == null;
+    }
+
+    public Integer getFetchSize() {
+        return fetchSize;
+    }
+
+    public void setFetchSize(Integer fetchSize) {
+        this.fetchSize = fetchSize;
+    }
+
+    public void addOrderByColumn(String column) {
+        orderByColumns.add(column);
+    }
+
+    public String getOrderByClause(boolean asc) {
+        String orderByStr = " ORDER BY ";
+        if (!orderByColumns.isEmpty()) {
+            StringBuilder sb = new StringBuilder(orderByStr);
+            for (String orderByColumn : orderByColumns) {
+                if (sb.length() != orderByStr.length()) {
+                    sb.append(", ");
+                }
+                sb.append(orderByColumn);
+                if (!asc) {
+                    sb.append(" DESC");
+                }
+            }
+            sb.append(" ");
+            return sb.toString();
+        }
+        return null;
+    }
+
+    protected boolean appendMetricNameClause(StringBuilder sb) {
+        boolean appendConjunction = false;
+        StringBuilder metricsLike = new StringBuilder();
+        StringBuilder metricsIn = new StringBuilder();
+
+        if (getMetricNames() != null) {
+            for (String name : getMetricNames()) {
+                if (name.contains("%")) {
+                    if (metricsLike.length() > 1) {
+                        metricsLike.append(" OR ");
+                    }
+                    metricsLike.append("METRIC_NAME LIKE ?");
+                } else {
+                    if (metricsIn.length() > 0) {
+                        metricsIn.append(", ");
+                    }
+                    metricsIn.append("?");
+                }
+            }
+
+            if (metricsIn.length() > 0) {
+                sb.append("(METRIC_NAME IN (");
+                sb.append(metricsIn);
+                sb.append(")");
+                appendConjunction = true;
+            }
+
+            if (metricsLike.length() > 0) {
+                if (appendConjunction) {
+                    sb.append(" OR ");
+                } else {
+                    sb.append("(");
+                }
+                sb.append(metricsLike);
+                appendConjunction = true;
+            }
+
+            if (appendConjunction) {
+                sb.append(")");
+            }
+        }
+        return appendConjunction;
+    }
+
+    protected boolean appendHostnameClause(StringBuilder sb, boolean appendConjunction) {
+        boolean hostnameContainsRegex = false;
+        if (hostnames != null) {
+            for (String hostname : hostnames) {
+                if (hostname.contains("%")) {
+                    hostnameContainsRegex = true;
+                    break;
+                }
+            }
+        }
+
+        StringBuilder hostnamesCondition = new StringBuilder();
+        if (hostnameContainsRegex) {
+            hostnamesCondition.append(" (");
+            for (String hostname : getHostnames()) {
+                if (hostnamesCondition.length() > 2) {
+                    hostnamesCondition.append(" OR ");
+                }
+                hostnamesCondition.append("HOSTNAME LIKE ?");
+            }
+            hostnamesCondition.append(")");
+
+            appendConjunction = append(sb, appendConjunction, getHostnames(), hostnamesCondition.toString());
+        } else if (hostnames != null && getHostnames().size() > 1) {
+            for (String hostname : getHostnames()) {
+                if (hostnamesCondition.length() > 0) {
+                    hostnamesCondition.append(" ,");
+                } else {
+                    hostnamesCondition.append(" HOSTNAME IN (");
+                }
+                hostnamesCondition.append('?');
+            }
+            hostnamesCondition.append(')');
+            appendConjunction = append(sb, appendConjunction, getHostnames(), hostnamesCondition.toString());
+
+        } else {
+            appendConjunction = append(sb, appendConjunction, getHostnames(), " HOSTNAME = ?");
+        }
+        return appendConjunction;
+    }
+
+    @Override
+    public String toString() {
+        return "Condition{" +
+                "metricNames=" + metricNames +
+                ", hostnames='" + hostnames + '\'' +
+                ", appId='" + appId + '\'' +
+                ", instanceId='" + instanceId + '\'' +
+                ", startTime=" + startTime +
+                ", endTime=" + endTime +
+                ", limit=" + limit +
+                ", grouped=" + grouped +
+                ", orderBy=" + orderByColumns +
+                ", noLimit=" + noLimit +
+                '}';
+    }
+}
