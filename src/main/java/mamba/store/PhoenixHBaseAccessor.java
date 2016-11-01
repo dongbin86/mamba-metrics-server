@@ -157,7 +157,7 @@ public class PhoenixHBaseAccessor {
         List<TimelineMetrics> metricsArray = new ArrayList<TimelineMetrics>(insertCache.size());
         while (!insertCache.isEmpty()) {
             metricsArray.add(insertCache.poll());
-        }/**全部复制出来一份，这时候如果还有正在往里插的呢？*/
+        }
         if (metricsArray.size() > 0) {
             commitMetrics(metricsArray);
         }
@@ -626,7 +626,9 @@ public class PhoenixHBaseAccessor {
             if (CollectionUtils.isNotEmpty(AggregatorUtils.whitelistedMetrics) &&
                     !AggregatorUtils.whitelistedMetrics.contains(tm.getMetricName())) {
                 continue;
-            }
+            }/**
+             聚合工具白名单中如果没有这个东西，那么对不起，不保留元数据
+             */
 
             // Write to metadata cache on successful write to store
             if (metadataManager != null) {
@@ -635,7 +637,7 @@ public class PhoenixHBaseAccessor {
 
                 metadataManager.putIfModifiedHostedAppsMetadata(
                         tm.getHostName(), tm.getAppId());
-            }
+            }/**保存元数据*/
         }
 
         if (!skipCache && cacheEnabled) {
@@ -648,6 +650,11 @@ public class PhoenixHBaseAccessor {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
+            /**
+             * 这里的cache刷写机制是非线程安全的可能多个线程同时进去flush流程，同时写入缓存和flush两个流程可能导致oom
+             * poll的过程中，不断写入缓存，那么拷贝不会停止，从而导致oom
+             *
+             * */
         } else {
             LOG.debug("Skipping metrics cache");
             commitMetrics(metrics);
