@@ -287,11 +287,8 @@ public class HBaseMetricStore implements MetricStore {
 
     @Override
     public TimelinePutResponse putMetrics(TimelineMetrics metrics) throws SQLException, IOException {
-        // Error indicated by the Sql exception
         TimelinePutResponse response = new TimelinePutResponse();
-
         hBaseAccessor.insertMetricRecordsWithMetadata(metricMetadataManager, metrics, false);
-
         return response;
     }
 

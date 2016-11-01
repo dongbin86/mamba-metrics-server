@@ -37,7 +37,25 @@ public class TimelineMetricMetadataSync implements Runnable {
                  "START_TIME, SUPPORTS_AGGREGATION) " +
                  "VALUES (?, ?, ?, ?, ?, ?)
                  * */
-                markSuccess = true;
+/**
+ * "CREATE TABLE IF NOT EXISTS METRICS_METADATA " +
+ "(METRIC_NAME VARCHAR, " +
+ "APP_ID VARCHAR, " +
+ "UNITS CHAR(20), " +
+ "TYPE CHAR(20), " +
+ "START_TIME UNSIGNED_LONG, " +
+ "SUPPORTS_AGGREGATION BOOLEAN " +
+ "CONSTRAINT pk PRIMARY KEY (METRIC_NAME, APP_ID)) " +
+ "DATA_BLOCK_ENCODING='%s', COMPRESSION='%s'"
+ *
+ *
+ * metricName,appId,units,start_time,support_aggregation,
+ *
+ *
+ *
+ * */
+
+                 markSuccess = true;
             } catch (SQLException e) {
                 LOG.warn("Error persisting metadata.", e);
             }
@@ -54,27 +72,41 @@ public class TimelineMetricMetadataSync implements Runnable {
                 // Update cache
                 cacheManager.getMetadataCache().put(key, metadata);
             }
-        }/**重新标记已经持久化，不看时间戳吗？*/
+        }/**重新标记已经持久化*/
         // Sync hosted apps data is needed
         if (cacheManager.syncHostedAppsMetadata()) {
             Map<String, Set<String>> persistedData = null;
             try {
-                persistedData = cacheManager.getPersistedHostedAppsData();
+                persistedData = cacheManager.getPersistedHostedAppsData(); /**从表里把数据全部捞出来*/
             } catch (SQLException e) {
                 LOG.warn("Failed on fetching hosted apps data from store.", e);
                 return; // Something wrong with store
             }
 
-            Map<String, Set<String>> cachedData = cacheManager.getHostedAppsCache();
+
+            /**
+             * "CREATE TABLE IF NOT EXISTS HOSTED_APPS_METADATA " +
+             "(HOSTNAME VARCHAR, APP_IDS VARCHAR, " +
+             "CONSTRAINT pk PRIMARY KEY (HOSTNAME))" +
+             "DATA_BLOCK_ENCODING='%s', COMPRESSION='%s'"
+             * */
+            Map<String, Set<String>> cachedData = cacheManager.getHostedAppsCache();  /**
+             本地缓存
+             */
             Map<String, Set<String>> dataToSync = new HashMap<>();
+
             if (cachedData != null && !cachedData.isEmpty()) {
+
                 for (Map.Entry<String, Set<String>> cacheEntry : cachedData.entrySet()) {
                     // No persistence / stale data in store
                     if (persistedData == null || persistedData.isEmpty() ||
                             !persistedData.containsKey(cacheEntry.getKey()) ||
                             !persistedData.get(cacheEntry.getKey()).containsAll(cacheEntry.getValue())) {
                         dataToSync.put(cacheEntry.getKey(), cacheEntry.getValue());
-                    }
+                    }/**
+                     把已经存储好的hosts-app关系捞出来，然后本地缓存的这些跟存储好的做下比对，
+                     存过的不需要再存了，没存的要挑出来，存储
+                     */
                 }
                 try {
                     cacheManager.persistHostedAppsMetadata(dataToSync);

@@ -12,7 +12,7 @@
     
     <property>
       <name>timeline.metrics.aggregator.checkpoint.dir</name>
-      <value>/root/workspace/git/mamba-server/checkpoint</value>
+      <value>/root/workspace/git/mamba-metrics-server/checkpoint</value>
     </property>
     
     <property>

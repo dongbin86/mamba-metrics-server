@@ -142,8 +142,6 @@ public class Controller {
     @ResponseBody
     public TimelinePutResponse postMetrics(@RequestBody TimelineMetrics metrics) {
 
-        System.out.println(metrics);
-
         if (metrics == null) {
             return new TimelinePutResponse();
         }
