@@ -191,13 +191,13 @@ public class PhoenixHBaseAccessor {
              * */
             for (TimelineMetrics timelineMetrics : timelineMetricsCollection) {
                 for (TimelineMetric metric : timelineMetrics.getMetrics()) {
-                    if (Math.abs(currentTime - metric.getStartTime()) > outOfBandTimeAllowance) {
-                        // If timeseries start time is way in the past : discard
+                    /*if (Math.abs(currentTime - metric.getStartTime()) > outOfBandTimeAllowance) {
+                        // 默认5分钟之前的数据是不接收的，这一点很重要！！！
                         LOG.debug("Discarding out of band timeseries, currentTime = "
                                 + currentTime + ", startTime = " + metric.getStartTime()
                                 + ", hostname = " + metric.getHostName());
                         continue;
-                    }/**2分钟内的才会执行插入，2分钟前的数据则直接丢弃*/
+                    }*//**2分钟内的才会执行插入，2分钟前的数据则直接丢弃*/
 
                     metricRecordStmt.clearParameters();
 
@@ -208,12 +208,11 @@ public class PhoenixHBaseAccessor {
                     }
                     double[] aggregates = AggregatorUtils.calculateAggregates(
                             metric.getMetricValues());
-
                     metricRecordStmt.setString(1, metric.getMetricName());
                     metricRecordStmt.setString(2, metric.getHostName());
                     metricRecordStmt.setString(3, metric.getAppId());
                     metricRecordStmt.setString(4, metric.getInstanceId());
-                    metricRecordStmt.setLong(5, currentTime);
+                    metricRecordStmt.setLong(5, currentTime);/**SERVER_TIME 系统时间，即入库时间*/
                     metricRecordStmt.setLong(6, metric.getStartTime());
                     metricRecordStmt.setString(7, metric.getUnits());
                     metricRecordStmt.setDouble(8, aggregates[0]);
@@ -221,6 +220,11 @@ public class PhoenixHBaseAccessor {
                     metricRecordStmt.setDouble(10, aggregates[2]);
                     metricRecordStmt.setLong(11, (long) aggregates[3]);
                     String json = TimelineUtils.dumpTimelineRecordtoJSON(metric.getMetricValues());
+
+
+                    System.out.println(json);
+
+
                     metricRecordStmt.setString(12, json);
 
                     try {
@@ -656,6 +660,7 @@ public class PhoenixHBaseAccessor {
              *
              * */
         } else {
+            System.out.println("直接插入，关闭cache，牺牲一部分性能................");
             LOG.debug("Skipping metrics cache");
             commitMetrics(metrics);
         }

@@ -182,6 +182,10 @@ public class HBaseMetricStore implements MetricStore {
                 LOG.info("Started watchdog for timeline metrics store with initial " +
                         "delay = " + initDelay + ", delay = " + delay);
             }
+            /**
+             * 这个watchdog的行为就是周期性往hbase表里插入metrics，然后尝试读出来，类似探针作业，实验读写性能，
+             * 读写整体延时2s钟都认为是正常的
+             * */
 
             isInitialized = true;
         }
