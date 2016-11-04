@@ -4,13 +4,13 @@ import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
 import mamba.aggregators.AggregatorUtils;
 import mamba.aggregators.Function;
-import mamba.aggregators.TimelineMetricAggregator;
-import mamba.aggregators.TimelineMetricAggregatorFactory;
-import mamba.discovery.TimelineMetricMetadataKey;
-import mamba.discovery.TimelineMetricMetadataManager;
+import mamba.aggregators.MetricAggregator;
+import mamba.aggregators.MetricAggregatorFactory;
+import mamba.discovery.MetricMetadataKey;
+import mamba.discovery.MetricMetadataManager;
+import mamba.function.MetricsSeriesAggregateFunctionFactory;
 import mamba.function.SeriesAggregateFunction;
-import mamba.function.TimelineMetricsSeriesAggregateFunction;
-import mamba.function.TimelineMetricsSeriesAggregateFunctionFactory;
+import mamba.function.MetricsSeriesAggregateFunction;
 import mamba.metrics.*;
 import mamba.query.Condition;
 import mamba.query.ConditionBuilder;
@@ -28,7 +28,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
-import static mamba.store.TimelineMetricConfiguration.*;
+import static mamba.store.MetricConfiguration.*;
 
 /**
  * Created by dongbin on 2016/10/10.
@@ -39,20 +39,20 @@ public class HBaseMetricStore implements MetricStore {
 
     private static volatile boolean isInitialized = false;
 
-    private final TimelineMetricConfiguration configuration;
+    private final MetricConfiguration configuration;
 
     private final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
 
     private PhoenixHBaseAccessor hBaseAccessor;
 
-    private TimelineMetricMetadataManager metricMetadataManager;
+    private MetricMetadataManager metricMetadataManager;
 
     private Integer defaultTopNHostsLimit;
 
     /**
      * Construct the service.
      */
-    public HBaseMetricStore(TimelineMetricConfiguration configuration) {
+    public HBaseMetricStore(MetricConfiguration configuration) {
         this.configuration = configuration;
     }
 
@@ -121,7 +121,7 @@ public class HBaseMetricStore implements MetricStore {
             // Initialize schema
             hBaseAccessor.initMetricSchema();
             // Initialize metadata from store
-            metricMetadataManager = new TimelineMetricMetadataManager(hBaseAccessor, metricsConf);
+            metricMetadataManager = new MetricMetadataManager(hBaseAccessor, metricsConf);
             metricMetadataManager.initializeMetadata();
             // Initialize policies before TTL update
             hBaseAccessor.initPoliciesAndTTL();
@@ -137,38 +137,38 @@ public class HBaseMetricStore implements MetricStore {
             }
 
             // Start the cluster aggregator second
-            TimelineMetricAggregator secondClusterAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineClusterAggregatorSecond(hBaseAccessor, metricsConf, metricMetadataManager);
+            MetricAggregator secondClusterAggregator =
+                    MetricAggregatorFactory.createTimelineClusterAggregatorSecond(hBaseAccessor, metricsConf, metricMetadataManager);
             scheduleAggregatorThread(secondClusterAggregator);
 
             // Start the minute cluster aggregator
-            TimelineMetricAggregator minuteClusterAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineClusterAggregatorMinute(hBaseAccessor, metricsConf);
+            MetricAggregator minuteClusterAggregator =
+                    MetricAggregatorFactory.createTimelineClusterAggregatorMinute(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(minuteClusterAggregator);
 
             // Start the hourly cluster aggregator
-            TimelineMetricAggregator hourlyClusterAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineClusterAggregatorHourly(hBaseAccessor, metricsConf);
+            MetricAggregator hourlyClusterAggregator =
+                    MetricAggregatorFactory.createTimelineClusterAggregatorHourly(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(hourlyClusterAggregator);
 
             // Start the daily cluster aggregator
-            TimelineMetricAggregator dailyClusterAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineClusterAggregatorDaily(hBaseAccessor, metricsConf);
+            MetricAggregator dailyClusterAggregator =
+                    MetricAggregatorFactory.createTimelineClusterAggregatorDaily(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(dailyClusterAggregator);
 
             // Start the minute host aggregator
-            TimelineMetricAggregator minuteHostAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineMetricAggregatorMinute(hBaseAccessor, metricsConf);
+            MetricAggregator minuteHostAggregator =
+                    MetricAggregatorFactory.createTimelineMetricAggregatorMinute(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(minuteHostAggregator);
 
             // Start the hourly host aggregator
-            TimelineMetricAggregator hourlyHostAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineMetricAggregatorHourly(hBaseAccessor, metricsConf);
+            MetricAggregator hourlyHostAggregator =
+                    MetricAggregatorFactory.createTimelineMetricAggregatorHourly(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(hourlyHostAggregator);
 
             // Start the daily host aggregator
-            TimelineMetricAggregator dailyHostAggregator =
-                    TimelineMetricAggregatorFactory.createTimelineMetricAggregatorDaily(hBaseAccessor, metricsConf);
+            MetricAggregator dailyHostAggregator =
+                    MetricAggregatorFactory.createTimelineMetricAggregatorDaily(hBaseAccessor, metricsConf);
             scheduleAggregatorThread(dailyHostAggregator);
 
             if (!configuration.isTimelineMetricsServiceWatcherDisabled()) {
@@ -192,7 +192,7 @@ public class HBaseMetricStore implements MetricStore {
     }
 
     @Override
-    public TimelineMetrics getTimelineMetrics(List<String> metricNames,
+    public Metrics getTimelineMetrics(List<String> metricNames,
                                               List<String> hostnames, String applicationId, String instanceId,
                                               Long startTime, Long endTime, Precision precision, Integer limit,
                                               boolean groupedByHosts, TopNConfig topNConfig, String seriesAggregateFunction) throws SQLException, IOException {
@@ -208,10 +208,10 @@ public class HBaseMetricStore implements MetricStore {
             throw new IllegalArgumentException("Limit too big");
         }
 
-        TimelineMetricsSeriesAggregateFunction seriesAggrFunctionInstance = null;
+        MetricsSeriesAggregateFunction seriesAggrFunctionInstance = null;
         if (!StringUtils.isEmpty(seriesAggregateFunction)) {
             SeriesAggregateFunction func = SeriesAggregateFunction.getFunction(seriesAggregateFunction);
-            seriesAggrFunctionInstance = TimelineMetricsSeriesAggregateFunctionFactory.newInstance(func);
+            seriesAggrFunctionInstance = MetricsSeriesAggregateFunctionFactory.newInstance(func);
         }
 
         Multimap<String, List<Function>> metricFunctions =
@@ -247,7 +247,7 @@ public class HBaseMetricStore implements MetricStore {
 
         Condition condition = conditionBuilder.build();
 
-        TimelineMetrics metrics;
+        Metrics metrics;
 
         if (hostnames == null || hostnames.isEmpty()) {
             metrics = hBaseAccessor.getAggregateMetricRecords(condition, metricFunctions);
@@ -264,10 +264,10 @@ public class HBaseMetricStore implements MetricStore {
         return seriesAggregateMetrics(seriesAggrFunctionInstance, metrics);
     }
 
-    private TimelineMetrics postProcessMetrics(TimelineMetrics metrics) {
-        List<TimelineMetric> metricsList = metrics.getMetrics();
+    private Metrics postProcessMetrics(Metrics metrics) {
+        List<Metric> metricsList = metrics.getMetrics();
 
-        for (TimelineMetric metric : metricsList) {
+        for (Metric metric : metricsList) {
             String name = metric.getMetricName();
             if (name.contains("._rate")) {
                 updateValuesAsRate(metric.getMetricValues(), false);
@@ -279,38 +279,38 @@ public class HBaseMetricStore implements MetricStore {
         return metrics;
     }
 
-    private TimelineMetrics seriesAggregateMetrics(TimelineMetricsSeriesAggregateFunction seriesAggrFuncInstance,
-                                                   TimelineMetrics metrics) {
+    private Metrics seriesAggregateMetrics(MetricsSeriesAggregateFunction seriesAggrFuncInstance,
+                                                   Metrics metrics) {
         if (seriesAggrFuncInstance != null) {
-            TimelineMetric appliedMetric = seriesAggrFuncInstance.apply(metrics);
+            Metric appliedMetric = seriesAggrFuncInstance.apply(metrics);
             metrics.setMetrics(Collections.singletonList(appliedMetric));
         }
         return metrics;
     }
 
     @Override
-    public TimelinePutResponse putMetrics(TimelineMetrics metrics) throws SQLException, IOException {
-        TimelinePutResponse response = new TimelinePutResponse();
+    public PutResponse putMetrics(Metrics metrics) throws SQLException, IOException {
+        PutResponse response = new PutResponse();
         hBaseAccessor.insertMetricRecordsWithMetadata(metricMetadataManager, metrics, false);
         return response;
     }
 
     @Override
-    public TimelinePutResponse putContainerMetrics(List<ContainerMetric> metrics)
+    public PutResponse putContainerMetrics(List<ContainerMetric> metrics)
             throws SQLException, IOException {
         hBaseAccessor.insertContainerMetrics(metrics);
-        return new TimelinePutResponse();
+        return new PutResponse();
     }
 
     @Override
-    public Map<String, List<TimelineMetricMetadata>> getTimelineMetricMetadata() throws SQLException, IOException {
-        Map<TimelineMetricMetadataKey, TimelineMetricMetadata> metadata =
+    public Map<String, List<MetricMetadata>> getTimelineMetricMetadata() throws SQLException, IOException {
+        Map<MetricMetadataKey, MetricMetadata> metadata =
                 metricMetadataManager.getMetadataCache();
 
         // Group Metadata by AppId
-        Map<String, List<TimelineMetricMetadata>> metadataByAppId = new HashMap<>();
-        for (TimelineMetricMetadata metricMetadata : metadata.values()) {
-            List<TimelineMetricMetadata> metadataList = metadataByAppId.get(metricMetadata.getAppId());
+        Map<String, List<MetricMetadata>> metadataByAppId = new HashMap<>();
+        for (MetricMetadata metricMetadata : metadata.values()) {
+            List<MetricMetadata> metadataList = metadataByAppId.get(metricMetadata.getAppId());
             if (metadataList == null) {
                 metadataList = new ArrayList<>();
                 metadataByAppId.put(metricMetadata.getAppId(), metadataList);
@@ -327,7 +327,7 @@ public class HBaseMetricStore implements MetricStore {
         return metricMetadataManager.getHostedAppsCache();
     }
 
-    private void scheduleAggregatorThread(TimelineMetricAggregator aggregator) {
+    private void scheduleAggregatorThread(MetricAggregator aggregator) {
         ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
         if (!aggregator.isDisabled()) {
             executorService.scheduleAtFixedRate(aggregator,

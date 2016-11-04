@@ -3,7 +3,7 @@ package mamba.metrics;
 /**
  * @author dongbin  @Date: 10/28/16
  */
-public class SingleValuedTimelineMetric {
+public class SingleValuedMetric {
 
     private Long timestamp;
     private Double value;
@@ -19,9 +19,9 @@ public class SingleValuedTimelineMetric {
         this.value = value;
     }
 
-    public SingleValuedTimelineMetric(String metricName, String appId,
-                                      String instanceId, String hostName,
-                                      long timestamp, long startTime, String type) {
+    public SingleValuedMetric(String metricName, String appId,
+                              String instanceId, String hostName,
+                              long timestamp, long startTime, String type) {
         this.metricName = metricName;
         this.appId = appId;
         this.instanceId = instanceId;
@@ -63,7 +63,7 @@ public class SingleValuedTimelineMetric {
         return hostName;
     }
 
-    public boolean equalsExceptTime(TimelineMetric metric) {
+    public boolean equalsExceptTime(Metric metric) {
         if (!metricName.equals(metric.getMetricName())) return false;
         if (hostName != null ? !hostName.equals(metric.getHostName()) : metric.getHostName() != null)
             return false;
@@ -75,8 +75,8 @@ public class SingleValuedTimelineMetric {
         return true;
     }
 
-    public TimelineMetric getTimelineMetric() {
-        TimelineMetric metric = new TimelineMetric();
+    public Metric getTimelineMetric() {
+        Metric metric = new Metric();
         metric.setMetricName(this.metricName);
         metric.setAppId(this.appId);
         metric.setHostName(this.hostName);

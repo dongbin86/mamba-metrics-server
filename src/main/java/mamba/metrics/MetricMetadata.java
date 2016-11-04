@@ -5,7 +5,7 @@ import org.codehaus.jackson.annotate.JsonIgnore;
 /**
  * Created by sanbing on 10/10/16.
  */
-public class TimelineMetricMetadata {
+public class MetricMetadata {
 
 
     private String metricName;
@@ -25,12 +25,12 @@ public class TimelineMetricMetadata {
     }
 
     // Default constructor
-    public TimelineMetricMetadata() {
+    public MetricMetadata() {
     }
 
-    public TimelineMetricMetadata(String metricName, String appId, String units,
-                                  String type, Long seriesStartTime,
-                                  boolean supportsAggregates) {
+    public MetricMetadata(String metricName, String appId, String units,
+                          String type, Long seriesStartTime,
+                          boolean supportsAggregates) {
         this.metricName = metricName;
         this.appId = appId;
         this.units = units;
@@ -101,7 +101,7 @@ public class TimelineMetricMetadata {
         this.isPersisted = isPersisted;
     }
 
-    public boolean needsToBeSynced(TimelineMetricMetadata metadata) throws MetadataException {
+    public boolean needsToBeSynced(MetricMetadata metadata) throws MetadataException {
         if (!this.metricName.equals(metadata.getMetricName()) ||
                 !this.appId.equals(metadata.getAppId())) {
             throw new MetadataException("Unexpected argument: metricName = " +
@@ -120,7 +120,7 @@ public class TimelineMetricMetadata {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TimelineMetricMetadata that = (TimelineMetricMetadata) o;
+        MetricMetadata that = (MetricMetadata) o;
 
         if (!metricName.equals(that.metricName)) return false;
         return !(appId != null ? !appId.equals(that.appId) : that.appId != null);

@@ -1,8 +1,8 @@
 package mamba.store;
 
+import mamba.metrics.Metric;
+import mamba.metrics.Metrics;
 import mamba.metrics.Precision;
-import mamba.metrics.TimelineMetric;
-import mamba.metrics.TimelineMetrics;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.hadoop.util.ExitUtil;
@@ -21,7 +21,7 @@ public class MetricStoreWatcher implements Runnable {
     private static final String FAKE_APP_ID = "timeline_metric_store_watcher";
 
     private static int failures = 0;
-    private final TimelineMetricConfiguration configuration;
+    private final MetricConfiguration configuration;
 
     private MetricStore metricStore;
 
@@ -30,7 +30,7 @@ public class MetricStoreWatcher implements Runnable {
 
 
     public MetricStoreWatcher(MetricStore metricStore,
-                              TimelineMetricConfiguration configuration) {
+                              MetricConfiguration configuration) {
         this.metricStore = metricStore;
         this.configuration = configuration;
     }
@@ -67,7 +67,7 @@ public class MetricStoreWatcher implements Runnable {
         final int delay = configuration.getTimelineMetricsServiceWatcherDelay();
         final int timeout = configuration.getTimelineMetricsServiceWatcherTimeout();
 
-        TimelineMetric fakeMetric = new TimelineMetric();
+        Metric fakeMetric = new Metric();
         fakeMetric.setMetricName(FAKE_METRIC_NAME);
         fakeMetric.setHostName(FAKE_HOSTNAME);
         fakeMetric.setAppId(FAKE_APP_ID);
@@ -75,24 +75,24 @@ public class MetricStoreWatcher implements Runnable {
         fakeMetric.setTimestamp(startTime);
         fakeMetric.getMetricValues().put(startTime, 0.0);
 
-        final TimelineMetrics metrics = new TimelineMetrics();
+        final Metrics metrics = new Metrics();
         metrics.setMetrics(Collections.singletonList(fakeMetric));
 
-        Callable<TimelineMetric> task = new Callable<TimelineMetric>() {
-            public TimelineMetric call() throws Exception {
+        Callable<Metric> task = new Callable<Metric>() {
+            public Metric call() throws Exception {
                 metricStore.putMetrics(metrics);
-                TimelineMetrics timelineMetrics = metricStore.getTimelineMetrics(
+                Metrics metrics = metricStore.getTimelineMetrics(
                         Collections.singletonList(FAKE_METRIC_NAME), Collections.singletonList(FAKE_HOSTNAME),
                         FAKE_APP_ID, null, startTime - delay * 2 * 1000,
                         startTime + delay * 2 * 1000, Precision.SECONDS, 1, true, null, null);
-                return timelineMetrics.getMetrics().get(0);
+                return metrics.getMetrics().get(0);
             }
         };
 
-        Future<TimelineMetric> future = executor.submit(task);
-        TimelineMetric timelineMetric = null;
+        Future<Metric> future = executor.submit(task);
+        Metric metric = null;
         try {
-            timelineMetric = future.get(timeout, TimeUnit.SECONDS);
+            metric = future.get(timeout, TimeUnit.SECONDS);
             // Phoenix might throw RuntimeExeption's
         } catch (Exception e) {
             return false;
@@ -100,7 +100,7 @@ public class MetricStoreWatcher implements Runnable {
             future.cancel(true);
         }
 
-        return timelineMetric != null;
+        return metric != null;
     }
 
 }

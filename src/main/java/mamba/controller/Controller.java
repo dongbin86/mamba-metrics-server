@@ -2,7 +2,7 @@ package mamba.controller;
 import mamba.exception.BadRequestException;
 import mamba.metrics.*;
 import mamba.store.MetricStore;
-import mamba.store.TimelinePutResponse;
+import mamba.store.PutResponse;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,10 +37,10 @@ public class Controller {
 
     @RequestMapping(value = "/metrics", method = RequestMethod.POST)
     @ResponseBody
-    public TimelinePutResponse postMetrics(@RequestBody TimelineMetrics metrics) {
+    public PutResponse postMetrics(@RequestBody Metrics metrics) {
 
         if (metrics == null) {
-            return new TimelinePutResponse();
+            return new PutResponse();
         }
 
         try {
@@ -60,9 +60,9 @@ public class Controller {
 
     @RequestMapping(value = "/containermetrics", method = RequestMethod.POST)
     @ResponseBody
-    public TimelinePutResponse postContainerMetrics(@RequestBody List<ContainerMetric> metrics) {
+    public PutResponse postContainerMetrics(@RequestBody List<ContainerMetric> metrics) {
         if (metrics == null || metrics.isEmpty()) {
-            return new TimelinePutResponse();
+            return new PutResponse();
         }
 
         try {
@@ -81,7 +81,7 @@ public class Controller {
 
 
     @RequestMapping(value = "/metrics", method = RequestMethod.GET)
-    public TimelineMetrics getTimelineMetrics(
+    public Metrics getTimelineMetrics(
             @RequestParam(value = "metricNames", required = true) String metricNames,
             @RequestParam(value = "appId", required = false) String appId,
             @RequestParam(value = "instanceId", required = false) String instanceId,
@@ -140,7 +140,7 @@ public class Controller {
     }
 
     @RequestMapping(value = "/metrics/metadata", method = RequestMethod.GET)
-    public Map<String, List<TimelineMetricMetadata>> getTimelineMetricMetadata() {
+    public Map<String, List<MetricMetadata>> getTimelineMetricMetadata() {
         try {
             return metricStore.getTimelineMetricMetadata();
         } catch (Exception e) {

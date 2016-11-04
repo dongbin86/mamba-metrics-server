@@ -1,8 +1,8 @@
 package mamba.discovery;
 
 import mamba.metrics.MetadataException;
-import mamba.metrics.TimelineMetric;
-import mamba.metrics.TimelineMetricMetadata;
+import mamba.metrics.Metric;
+import mamba.metrics.MetricMetadata;
 import mamba.store.PhoenixHBaseAccessor;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -19,15 +19,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static mamba.store.TimelineMetricConfiguration.*;
+import static mamba.store.MetricConfiguration.*;
 
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricMetadataManager {
-    private static final Log LOG = LogFactory.getLog(TimelineMetricMetadataManager.class);
+public class MetricMetadataManager {
+    private static final Log LOG = LogFactory.getLog(MetricMetadataManager.class);
     // 使用metric_name和appid做索引
-    private final Map<TimelineMetricMetadataKey, TimelineMetricMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
+    private final Map<MetricMetadataKey, MetricMetadata> METADATA_CACHE = new ConcurrentHashMap<>();
     // Map to lookup apps on a host
     private final Map<String, Set<String>> HOSTED_APPS_MAP = new ConcurrentHashMap<>();
     // Single thread to sync back new writes to the store
@@ -39,8 +39,8 @@ public class TimelineMetricMetadataManager {
     private PhoenixHBaseAccessor hBaseAccessor;
     private Configuration metricsConf;
 
-    public TimelineMetricMetadataManager(PhoenixHBaseAccessor hBaseAccessor,
-                                         Configuration metricsConf) {
+    public MetricMetadataManager(PhoenixHBaseAccessor hBaseAccessor,
+                                 Configuration metricsConf) {
         this.hBaseAccessor = hBaseAccessor;
         this.metricsConf = metricsConf;
     }
@@ -53,13 +53,13 @@ public class TimelineMetricMetadataManager {
             isDisabled = true;
         } else {
             // Schedule the executor to sync to store
-            executorService.scheduleWithFixedDelay(new TimelineMetricMetadataSync(this),
+            executorService.scheduleWithFixedDelay(new MetricMetadataSync(this),
                     metricsConf.getInt(METRICS_METADATA_SYNC_INIT_DELAY, 120), // 2 minutes
                     metricsConf.getInt(METRICS_METADATA_SYNC_SCHEDULE_DELAY, 300), // 5 minutes
                     TimeUnit.SECONDS);
             // Read from store and initialize map
             try {
-                Map<TimelineMetricMetadataKey, TimelineMetricMetadata> metadata =
+                Map<MetricMetadataKey, MetricMetadata> metadata =
                         hBaseAccessor.getTimelineMetricMetadata();
                 /**
                  * 初始化的时候，会将全部的元数据捞出来
@@ -81,13 +81,13 @@ public class TimelineMetricMetadataManager {
         }
     }
 
-    public Map<TimelineMetricMetadataKey, TimelineMetricMetadata> getMetadataCache() {
+    public Map<MetricMetadataKey, MetricMetadata> getMetadataCache() {
         return METADATA_CACHE;
     }/**
 
      */
 
-    public TimelineMetricMetadata getMetadataCacheValue(TimelineMetricMetadataKey key) {
+    public MetricMetadata getMetadataCacheValue(MetricMetadataKey key) {
         return METADATA_CACHE.get(key);
     }
 
@@ -106,16 +106,16 @@ public class TimelineMetricMetadataManager {
     /**
      * Update value in metadata cache
      *
-     * @param metadata @TimelineMetricMetadata
+     * @param metadata @MetricMetadata
      */
-    public void putIfModifiedTimelineMetricMetadata(TimelineMetricMetadata metadata) {
-        TimelineMetricMetadataKey key = new TimelineMetricMetadataKey(
+    public void putIfModifiedTimelineMetricMetadata(MetricMetadata metadata) {
+        MetricMetadataKey key = new MetricMetadataKey(
                 metadata.getMetricName(), metadata.getAppId());
         /**
          * 首先，根据新进来的metric_name和appid,在缓存里找到对应的元数据，
          *  如果里面其余信息跟缓存信息不一样，那么原来的缓存实际上就被覆盖掉了，然后下次同步时，把这部分写进hbase
          * */
-        TimelineMetricMetadata metadataFromCache = METADATA_CACHE.get(key);
+        MetricMetadata metadataFromCache = METADATA_CACHE.get(key);
 
         if (metadataFromCache != null) {
             try {
@@ -151,7 +151,7 @@ public class TimelineMetricMetadataManager {
         }
     }
 
-    public void persistMetadata(Collection<TimelineMetricMetadata> metadata) throws SQLException {
+    public void persistMetadata(Collection<MetricMetadata> metadata) throws SQLException {
         hBaseAccessor.saveMetricMetadata(metadata);
     }
 
@@ -159,13 +159,13 @@ public class TimelineMetricMetadataManager {
         hBaseAccessor.saveHostAppsMetadata(hostedApps);
     }/**这个表存储了机器上面的应用的映射关系*/
 
-    public TimelineMetricMetadata getTimelineMetricMetadata(TimelineMetric timelineMetric) {
-        return new TimelineMetricMetadata(
-                timelineMetric.getMetricName(),
-                timelineMetric.getAppId(),
-                timelineMetric.getUnits(),
-                timelineMetric.getType(),
-                timelineMetric.getStartTime(),
+    public MetricMetadata getTimelineMetricMetadata(Metric metric) {
+        return new MetricMetadata(
+                metric.getMetricName(),
+                metric.getAppId(),
+                metric.getUnits(),
+                metric.getType(),
+                metric.getStartTime(),
                 true
         );
     }

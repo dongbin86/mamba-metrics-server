@@ -13,9 +13,9 @@ import java.net.URL;
 /**
  * Created by sanbing on 10/10/16.
  */
-public class TimelineMetricConfiguration {
+public class MetricConfiguration {
 
-    private static final Log LOG = LogFactory.getLog(TimelineMetricConfiguration.class);
+    private static final Log LOG = LogFactory.getLog(MetricConfiguration.class);
 
     public static final String HBASE_SITE_CONFIGURATION_FILE = "hbase-site.xml";
     public static final String METRICS_SITE_CONFIGURATION_FILE = "ams-site.xml";

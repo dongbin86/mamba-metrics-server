@@ -6,37 +6,37 @@ import java.util.List;
 /**
  * @author dongbin  @Date: 11/4/16
  */
-public class TimelinePutResponse {
+public class PutResponse {
 
-    private List<TimelinePutError> errors = new ArrayList<>();
+    private List<PutError> errors = new ArrayList<>();
 
-    public TimelinePutResponse() {
+    public PutResponse() {
 
     }
 
 
-    public List<TimelinePutError> getErrors() {
+    public List<PutError> getErrors() {
         return errors;
     }
 
 
-    public void addError(TimelinePutError error) {
+    public void addError(PutError error) {
         errors.add(error);
     }
 
 
-    public void addErrors(List<TimelinePutError> errors) {
+    public void addErrors(List<PutError> errors) {
         this.errors.addAll(errors);
     }
 
 
-    public void setErrors(List<TimelinePutError> errors) {
+    public void setErrors(List<PutError> errors) {
         this.errors.clear();
         this.errors.addAll(errors);
     }
 
 
-    public static class TimelinePutError {
+    public static class PutError {
 
 
         public static final int NO_START_TIME = 1;

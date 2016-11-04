@@ -1,7 +1,7 @@
 package mamba.aggregators;
 
 
-import mamba.metrics.TimelineMetric;
+import mamba.metrics.Metric;
 import mamba.query.Condition;
 import mamba.query.DefaultCondition;
 import mamba.store.PhoenixHBaseAccessor;
@@ -20,20 +20,20 @@ import static mamba.query.PhoenixTransactSQL.GET_METRIC_AGGREGATE_ONLY_SQL;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricHostAggregator extends AbstractTimelineAggregator {
-    private static final Log LOG = LogFactory.getLog(TimelineMetricHostAggregator.class);
-    TimelineMetricReadHelper readHelper = new TimelineMetricReadHelper(false);
+public class MetricHostAggregator extends AbstractAggregator {
+    private static final Log LOG = LogFactory.getLog(MetricHostAggregator.class);
+    MetricReadHelper readHelper = new MetricReadHelper(false);
 
-    public TimelineMetricHostAggregator(String aggregatorName,
-                                        PhoenixHBaseAccessor hBaseAccessor,
-                                        Configuration metricsConf,
-                                        String checkpointLocation,
-                                        Long sleepIntervalMillis,
-                                        Integer checkpointCutOffMultiplier,
-                                        String hostAggregatorDisabledParam,
-                                        String tableName,
-                                        String outputTableName,
-                                        Long nativeTimeRangeDelay) {
+    public MetricHostAggregator(String aggregatorName,
+                                PhoenixHBaseAccessor hBaseAccessor,
+                                Configuration metricsConf,
+                                String checkpointLocation,
+                                Long sleepIntervalMillis,
+                                Integer checkpointCutOffMultiplier,
+                                String hostAggregatorDisabledParam,
+                                String tableName,
+                                String outputTableName,
+                                Long nativeTimeRangeDelay) {
         super(aggregatorName, hBaseAccessor, metricsConf, checkpointLocation,
                 sleepIntervalMillis, checkpointCutOffMultiplier, hostAggregatorDisabledParam,
                 tableName, outputTableName, nativeTimeRangeDelay);
@@ -42,7 +42,7 @@ public class TimelineMetricHostAggregator extends AbstractTimelineAggregator {
     @Override
     protected void aggregate(ResultSet rs, long startTime, long endTime) throws IOException, SQLException {
 
-        Map<TimelineMetric, MetricHostAggregate> hostAggregateMap = aggregateMetricsFromResultSet(rs, endTime);
+        Map<Metric, MetricHostAggregate> hostAggregateMap = aggregateMetricsFromResultSet(rs, endTime);
 
         LOG.info("Saving " + hostAggregateMap.size() + " metric aggregates.");
         hBaseAccessor.saveHostAggregateRecords(hostAggregateMap, outputTableName);
@@ -65,15 +65,15 @@ public class TimelineMetricHostAggregator extends AbstractTimelineAggregator {
         return condition;
     }
 
-    private Map<TimelineMetric, MetricHostAggregate> aggregateMetricsFromResultSet(ResultSet rs, long endTime)
+    private Map<Metric, MetricHostAggregate> aggregateMetricsFromResultSet(ResultSet rs, long endTime)
             throws IOException, SQLException {
-        TimelineMetric existingMetric = null;
+        Metric existingMetric = null;
         MetricHostAggregate hostAggregate = null;
-        Map<TimelineMetric, MetricHostAggregate> hostAggregateMap = new HashMap<TimelineMetric, MetricHostAggregate>();
+        Map<Metric, MetricHostAggregate> hostAggregateMap = new HashMap<Metric, MetricHostAggregate>();
 
 
         while (rs.next()) {
-            TimelineMetric currentMetric =
+            Metric currentMetric =
                     readHelper.getTimelineMetricKeyFromResultSet(rs);
             MetricHostAggregate currentHostAggregate =
                     readHelper.getMetricHostAggregateFromResultSet(rs);

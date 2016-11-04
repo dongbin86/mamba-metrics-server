@@ -2,8 +2,8 @@ package mamba.aggregators;
 
 import mamba.query.Condition;
 import mamba.query.PhoenixTransactSQL;
+import mamba.store.MetricConfiguration;
 import mamba.store.PhoenixHBaseAccessor;
-import mamba.store.TimelineMetricConfiguration;
 import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.slf4j.Logger;
@@ -22,7 +22,7 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public abstract class AbstractTimelineAggregator implements TimelineMetricAggregator {
+public abstract class AbstractAggregator implements MetricAggregator {
 
     protected final PhoenixHBaseAccessor hBaseAccessor;
     protected final Logger LOG;
@@ -39,27 +39,27 @@ public abstract class AbstractTimelineAggregator implements TimelineMetricAggreg
     private Integer checkpointCutOffMultiplier;
     private String aggregatorDisableParam;
 
-    AbstractTimelineAggregator(String aggregatorName,
-                               PhoenixHBaseAccessor hBaseAccessor,
-                               Configuration metricsConf) {
+    AbstractAggregator(String aggregatorName,
+                       PhoenixHBaseAccessor hBaseAccessor,
+                       Configuration metricsConf) {
         this.aggregatorName = aggregatorName;
         this.hBaseAccessor = hBaseAccessor;
         this.metricsConf = metricsConf;
-        this.checkpointDelayMillis = SECONDS.toMillis(metricsConf.getInt(TimelineMetricConfiguration.AGGREGATOR_CHECKPOINT_DELAY, 120));
-        this.resultsetFetchSize = metricsConf.getInt(TimelineMetricConfiguration.RESULTSET_FETCH_SIZE, 2000);
+        this.checkpointDelayMillis = SECONDS.toMillis(metricsConf.getInt(MetricConfiguration.AGGREGATOR_CHECKPOINT_DELAY, 120));
+        this.resultsetFetchSize = metricsConf.getInt(MetricConfiguration.RESULTSET_FETCH_SIZE, 2000);
         this.LOG = LoggerFactory.getLogger(aggregatorName);
     }
 
-    public AbstractTimelineAggregator(String aggregatorName,
-                                      PhoenixHBaseAccessor hBaseAccessor,
-                                      Configuration metricsConf,
-                                      String checkpointLocation,
-                                      Long sleepIntervalMillis,
-                                      Integer checkpointCutOffMultiplier,
-                                      String aggregatorDisableParam,
-                                      String tableName,
-                                      String outputTableName,
-                                      Long nativeTimeRangeDelay) {
+    public AbstractAggregator(String aggregatorName,
+                              PhoenixHBaseAccessor hBaseAccessor,
+                              Configuration metricsConf,
+                              String checkpointLocation,
+                              Long sleepIntervalMillis,
+                              Integer checkpointCutOffMultiplier,
+                              String aggregatorDisableParam,
+                              String tableName,
+                              String outputTableName,
+                              Long nativeTimeRangeDelay) {
         this(aggregatorName, hBaseAccessor, metricsConf);
         this.checkpointLocation = checkpointLocation;
         this.sleepIntervalMillis = sleepIntervalMillis;

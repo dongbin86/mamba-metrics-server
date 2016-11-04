@@ -2,8 +2,8 @@ package mamba.store;
 
 import com.google.common.collect.Multimap;
 import mamba.aggregators.*;
-import mamba.discovery.TimelineMetricMetadataKey;
-import mamba.discovery.TimelineMetricMetadataManager;
+import mamba.discovery.MetricMetadataKey;
+import mamba.discovery.MetricMetadataManager;
 import mamba.metrics.*;
 import mamba.query.*;
 import org.apache.commons.collections.CollectionUtils;
@@ -30,7 +30,7 @@ import java.util.concurrent.*;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static mamba.query.PhoenixTransactSQL.*;
-import static mamba.store.TimelineMetricConfiguration.*;
+import static mamba.store.MetricConfiguration.*;
 
 /**
  * Created by dongbin on 2016/10/10.
@@ -57,7 +57,7 @@ public class PhoenixHBaseAccessor {
      */
     private static final int METRICS_PER_MINUTE = 22;
     private static final int POINTS_PER_MINUTE = 6;
-    private static final TimelineMetricReadHelper TIMELINE_METRIC_READ_HELPER = new TimelineMetricReadHelper();
+    private static final MetricReadHelper TIMELINE_METRIC_READ_HELPER = new MetricReadHelper();
     public static int RESULTSET_LIMIT = (int) TimeUnit.HOURS.toMinutes(2) * METRICS_PER_MINUTE * POINTS_PER_MINUTE;
     private static ObjectMapper mapper = new ObjectMapper();
     private static TypeReference<TreeMap<Long, Double>> metricValuesTypeRef = new TypeReference<TreeMap<Long, Double>>() {
@@ -69,7 +69,7 @@ public class PhoenixHBaseAccessor {
     private final long outOfBandTimeAllowance;
     private final int cacheSize;
     private final boolean cacheEnabled;
-    private final BlockingQueue<TimelineMetrics> insertCache;
+    private final BlockingQueue<Metrics> insertCache;
     private final int cacheCommitInterval;
     private final boolean skipBlockCacheForAggregatorsEnabled;
     private final String timelineMetricsTablesDurability;
@@ -103,7 +103,7 @@ public class PhoenixHBaseAccessor {
         this.cacheEnabled = Boolean.valueOf(metricsConf.get(TIMELINE_METRICS_CACHE_ENABLED, "true"));
         this.cacheSize = Integer.valueOf(metricsConf.get(TIMELINE_METRICS_CACHE_SIZE, "150"));
         this.cacheCommitInterval = Integer.valueOf(metricsConf.get(TIMELINE_METRICS_CACHE_COMMIT_INTERVAL, "3"));
-        this.insertCache = new ArrayBlockingQueue<TimelineMetrics>(cacheSize);/**线程安全的容器*/
+        this.insertCache = new ArrayBlockingQueue<Metrics>(cacheSize);/**线程安全的容器*/
         this.skipBlockCacheForAggregatorsEnabled = metricsConf.getBoolean(AGGREGATORS_SKIP_BLOCK_CACHE, false);
         this.timelineMetricsTablesDurability = metricsConf.get(TIMELINE_METRICS_AGGREGATE_TABLES_DURABILITY, "");
         this.timelineMetricsPrecisionTableDurability = metricsConf.get(TIMELINE_METRICS_PRECISION_TABLE_DURABILITY, "");
@@ -126,9 +126,9 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    private static TimelineMetric getLastTimelineMetricFromResultSet(ResultSet rs)
+    private static Metric getLastTimelineMetricFromResultSet(ResultSet rs)
             throws SQLException, IOException {
-        TimelineMetric metric = TIMELINE_METRIC_READ_HELPER.getTimelineMetricCommonsFromResultSet(rs);
+        Metric metric = TIMELINE_METRIC_READ_HELPER.getTimelineMetricCommonsFromResultSet(rs);
         metric.setMetricValues(readLastMetricValueFromJSON(rs.getString("METRICS")));
         return metric;
     }
@@ -154,7 +154,7 @@ public class PhoenixHBaseAccessor {
 
     public void commitMetricsFromCache() {
         LOG.debug("Clearing metrics cache");
-        List<TimelineMetrics> metricsArray = new ArrayList<TimelineMetrics>(insertCache.size());
+        List<Metrics> metricsArray = new ArrayList<Metrics>(insertCache.size());
         while (!insertCache.isEmpty()) {
             metricsArray.add(insertCache.poll());
         }
@@ -163,11 +163,11 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    public void commitMetrics(TimelineMetrics timelineMetrics) {
-        commitMetrics(Collections.singletonList(timelineMetrics));
+    public void commitMetrics(Metrics metrics) {
+        commitMetrics(Collections.singletonList(metrics));
     }
 
-    public void commitMetrics(Collection<TimelineMetrics> timelineMetricsCollection) {
+    public void commitMetrics(Collection<Metrics> metricsCollection) {
         LOG.debug("Committing metrics to store");
         Connection conn = null;
         PreparedStatement metricRecordStmt = null;
@@ -189,8 +189,8 @@ public class PhoenixHBaseAccessor {
              "METRICS) VALUES " +
              "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
              * */
-            for (TimelineMetrics timelineMetrics : timelineMetricsCollection) {
-                for (TimelineMetric metric : timelineMetrics.getMetrics()) {
+            for (Metrics metrics : metricsCollection) {
+                for (Metric metric : metrics.getMetrics()) {
                     /*if (Math.abs(currentTime - metric.getStartTime()) > outOfBandTimeAllowance) {
                         // 默认5分钟之前的数据是不接收的，这一点很重要！！！
                         LOG.debug("Discarding out of band timeseries, currentTime = "
@@ -618,14 +618,14 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    public void insertMetricRecordsWithMetadata(TimelineMetricMetadataManager metadataManager,
-                                                TimelineMetrics metrics, boolean skipCache) throws SQLException, IOException {
-        List<TimelineMetric> timelineMetrics = metrics.getMetrics();
+    public void insertMetricRecordsWithMetadata(MetricMetadataManager metadataManager,
+                                                Metrics metrics, boolean skipCache) throws SQLException, IOException {
+        List<Metric> timelineMetrics = metrics.getMetrics();
         if (timelineMetrics == null || timelineMetrics.isEmpty()) {
             LOG.debug("Empty metrics insert request.");
             return;
         }
-        for (TimelineMetric tm : timelineMetrics) {
+        for (Metric tm : timelineMetrics) {
 
             if (CollectionUtils.isNotEmpty(AggregatorUtils.whitelistedMetrics) &&
                     !AggregatorUtils.whitelistedMetrics.contains(tm.getMetricName())) {
@@ -666,16 +666,16 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    public void insertMetricRecords(TimelineMetrics metrics, boolean skipCache) throws SQLException, IOException {
+    public void insertMetricRecords(Metrics metrics, boolean skipCache) throws SQLException, IOException {
         insertMetricRecordsWithMetadata(null, metrics, skipCache);
     }
 
-    public void insertMetricRecords(TimelineMetrics metrics) throws SQLException, IOException {
+    public void insertMetricRecords(Metrics metrics) throws SQLException, IOException {
         insertMetricRecords(metrics, false);
     }
 
     @SuppressWarnings("unchecked")
-    public TimelineMetrics getMetricRecords(
+    public Metrics getMetricRecords(
             final Condition condition, Multimap<String, List<Function>> metricFunctions)
             throws SQLException, IOException {
 
@@ -684,7 +684,7 @@ public class PhoenixHBaseAccessor {
         Connection conn = getConnection();
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        TimelineMetrics metrics = new TimelineMetrics();
+        Metrics metrics = new Metrics();
 
         try {
             //get latest
@@ -737,7 +737,7 @@ public class PhoenixHBaseAccessor {
                 // This is "maxStamp is smaller than minStamp" exception
                 // Log error and return empty metrics
                 LOG.debug(io);
-                return new TimelineMetrics();
+                return new Metrics();
             } else {
                 throw ex;
             }
@@ -774,7 +774,7 @@ public class PhoenixHBaseAccessor {
      * Apply aggregate function to the result if supplied else get precision
      * or aggregate data with default function applied.
      */
-    private void appendMetricFromResultSet(TimelineMetrics metrics, Condition condition,
+    private void appendMetricFromResultSet(Metrics metrics, Condition condition,
                                            Multimap<String, List<Function>> metricFunctions,
                                            ResultSet rs) throws SQLException, IOException {
         String metricName = rs.getString("METRIC_NAME");
@@ -790,7 +790,7 @@ public class PhoenixHBaseAccessor {
                     if (f.getReadFunction() == Function.ReadFunction.VALUE) {
                         getTimelineMetricsFromResultSet(metrics, f, condition, rs);
                     } else {
-                        SingleValuedTimelineMetric metric =
+                        SingleValuedMetric metric =
                                 TIMELINE_METRIC_READ_HELPER.getAggregatedTimelineMetricFromResultSet(rs, f);
 
                         if (condition.isGrouped()) {
@@ -808,9 +808,9 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    private void getTimelineMetricsFromResultSet(TimelineMetrics metrics, Function f, Condition condition, ResultSet rs) throws SQLException, IOException {
+    private void getTimelineMetricsFromResultSet(Metrics metrics, Function f, Condition condition, ResultSet rs) throws SQLException, IOException {
         if (condition.getPrecision().equals(Precision.SECONDS)) {
-            TimelineMetric metric = TIMELINE_METRIC_READ_HELPER.getTimelineMetricFromResultSet(rs);
+            Metric metric = TIMELINE_METRIC_READ_HELPER.getTimelineMetricFromResultSet(rs);
             if (f != null && f.getSuffix() != null) { //Case : Requesting "._rate" for precision data
                 metric.setMetricName(metric.getMetricName() + f.getSuffix());
             }
@@ -821,7 +821,7 @@ public class PhoenixHBaseAccessor {
             }
 
         } else {
-            SingleValuedTimelineMetric metric =
+            SingleValuedMetric metric =
                     TIMELINE_METRIC_READ_HELPER.getAggregatedTimelineMetricFromResultSet(rs, f);
             if (condition.isGrouped()) {
                 metrics.addOrMergeTimelineMetric(metric);
@@ -832,7 +832,7 @@ public class PhoenixHBaseAccessor {
     }
 
     private void getLatestMetricRecords(Condition condition, Connection conn,
-                                        TimelineMetrics metrics) throws SQLException, IOException {
+                                        Metrics metrics) throws SQLException, IOException {
 
         validateConditionIsNotEmpty(condition);
 
@@ -841,7 +841,7 @@ public class PhoenixHBaseAccessor {
         try {
             rs = stmt.executeQuery();
             while (rs.next()) {
-                TimelineMetric metric = getLastTimelineMetricFromResultSet(rs);
+                Metric metric = getLastTimelineMetricFromResultSet(rs);
                 metrics.getMetrics().add(metric);
             }
         } finally {
@@ -862,10 +862,10 @@ public class PhoenixHBaseAccessor {
      * Get metrics aggregated across hosts.
      *
      * @param condition @Condition
-     * @return @TimelineMetrics
+     * @return @Metrics
      * @throws java.sql.SQLException
      */
-    public TimelineMetrics getAggregateMetricRecords(final Condition condition,
+    public Metrics getAggregateMetricRecords(final Condition condition,
                                                      Multimap<String, List<Function>> metricFunctions) throws SQLException {
 
         validateConditionIsNotEmpty(condition);
@@ -873,7 +873,7 @@ public class PhoenixHBaseAccessor {
         Connection conn = getConnection();
         PreparedStatement stmt = null;
         ResultSet rs = null;
-        TimelineMetrics metrics = new TimelineMetrics();
+        Metrics metrics = new Metrics();
 
         try {
             //get latest
@@ -915,7 +915,7 @@ public class PhoenixHBaseAccessor {
         return metrics;
     }
 
-    private void appendAggregateMetricFromResultSet(TimelineMetrics metrics,
+    private void appendAggregateMetricFromResultSet(Metrics metrics,
                                                     Condition condition, Multimap<String, List<Function>> metricFunctions,
                                                     ResultSet rs) throws SQLException {
 
@@ -924,7 +924,7 @@ public class PhoenixHBaseAccessor {
 
         for (List<Function> functions : functionList) {
             for (Function aggregateFunction : functions) {
-                SingleValuedTimelineMetric metric;
+                SingleValuedMetric metric;
 
                 if (condition.getPrecision() == Precision.MINUTES
                         || condition.getPrecision() == Precision.HOURS
@@ -945,7 +945,7 @@ public class PhoenixHBaseAccessor {
     }
 
     private void getLatestAggregateMetricRecords(Condition condition,
-                                                 Connection conn, TimelineMetrics metrics,
+                                                 Connection conn, Metrics metrics,
                                                  Multimap<String, List<Function>> metricFunctions) throws SQLException {
 
         PreparedStatement stmt = null;
@@ -964,7 +964,7 @@ public class PhoenixHBaseAccessor {
                     for (List<Function> functions : functionList) {
                         if (functions != null) {
                             for (Function f : functions) {
-                                SingleValuedTimelineMetric metric =
+                                SingleValuedMetric metric =
                                         getAggregateTimelineMetricFromResultSet(rs, f, true);
 
                                 if (condition.isGrouped()) {
@@ -974,7 +974,7 @@ public class PhoenixHBaseAccessor {
                                 }
                             }
                         } else {
-                            SingleValuedTimelineMetric metric =
+                            SingleValuedMetric metric =
                                     getAggregateTimelineMetricFromResultSet(rs, new Function(), true);
                             metrics.getMetrics().add(metric.getTimelineMetric());
                         }
@@ -995,7 +995,7 @@ public class PhoenixHBaseAccessor {
         }
     }
 
-    private SingleValuedTimelineMetric getAggregateTimelineMetricFromResultSet(ResultSet rs,
+    private SingleValuedMetric getAggregateTimelineMetricFromResultSet(ResultSet rs,
                                                                                Function f, boolean useHostCount) throws SQLException {
 
         String countColumnName = "METRIC_COUNT";
@@ -1003,7 +1003,7 @@ public class PhoenixHBaseAccessor {
             countColumnName = "HOSTS_COUNT";
         }
 
-        SingleValuedTimelineMetric metric = new SingleValuedTimelineMetric(
+        SingleValuedMetric metric = new SingleValuedMetric(
                 rs.getString("METRIC_NAME") + f.getSuffix(),
                 rs.getString("APP_ID"),
                 rs.getString("INSTANCE_ID"),
@@ -1059,7 +1059,7 @@ public class PhoenixHBaseAccessor {
         return null;
     }
 
-    public void saveHostAggregateRecords(Map<TimelineMetric, MetricHostAggregate> hostAggregateMap,
+    public void saveHostAggregateRecords(Map<Metric, MetricHostAggregate> hostAggregateMap,
                                          String phoenixTableName) throws SQLException {
 
         if (hostAggregateMap == null || hostAggregateMap.isEmpty()) {
@@ -1077,10 +1077,10 @@ public class PhoenixHBaseAccessor {
             stmt = conn.prepareStatement(
                     String.format(UPSERT_AGGREGATE_RECORD_SQL, phoenixTableName));
 
-            for (Map.Entry<TimelineMetric, MetricHostAggregate> metricAggregate :
+            for (Map.Entry<Metric, MetricHostAggregate> metricAggregate :
                     hostAggregateMap.entrySet()) {
 
-                TimelineMetric metric = metricAggregate.getKey();
+                Metric metric = metricAggregate.getKey();
                 MetricHostAggregate hostAggregate = metricAggregate.getValue();
 
                 rowCount++;
@@ -1141,7 +1141,7 @@ public class PhoenixHBaseAccessor {
      *
      * @throws java.sql.SQLException
      */
-    public void saveClusterAggregateRecords(Map<TimelineClusterMetric, MetricClusterAggregate> records)
+    public void saveClusterAggregateRecords(Map<ClusterMetric, MetricClusterAggregate> records)
             throws SQLException {
 
         if (records == null || records.isEmpty()) {
@@ -1157,9 +1157,9 @@ public class PhoenixHBaseAccessor {
             stmt = conn.prepareStatement(sqlStr);
             int rowCount = 0;
 
-            for (Map.Entry<TimelineClusterMetric, MetricClusterAggregate>
+            for (Map.Entry<ClusterMetric, MetricClusterAggregate>
                     aggregateEntry : records.entrySet()) {
-                TimelineClusterMetric clusterMetric = aggregateEntry.getKey();
+                ClusterMetric clusterMetric = aggregateEntry.getKey();
                 MetricClusterAggregate aggregate = aggregateEntry.getValue();
 
                 if (LOG.isTraceEnabled()) {
@@ -1223,7 +1223,7 @@ public class PhoenixHBaseAccessor {
      *
      * @throws java.sql.SQLException
      */
-    public void saveClusterTimeAggregateRecords(Map<TimelineClusterMetric, MetricHostAggregate> records,
+    public void saveClusterTimeAggregateRecords(Map<ClusterMetric, MetricHostAggregate> records,
                                                 String tableName) throws SQLException {
         if (records == null || records.isEmpty()) {
             LOG.debug("Empty aggregate records.");
@@ -1238,8 +1238,8 @@ public class PhoenixHBaseAccessor {
             stmt = conn.prepareStatement(String.format(UPSERT_CLUSTER_AGGREGATE_TIME_SQL, tableName));
             int rowCount = 0;
 
-            for (Map.Entry<TimelineClusterMetric, MetricHostAggregate> aggregateEntry : records.entrySet()) {
-                TimelineClusterMetric clusterMetric = aggregateEntry.getKey();
+            for (Map.Entry<ClusterMetric, MetricHostAggregate> aggregateEntry : records.entrySet()) {
+                ClusterMetric clusterMetric = aggregateEntry.getKey();
                 MetricHostAggregate aggregate = aggregateEntry.getValue();
 
                 if (LOG.isTraceEnabled()) {
@@ -1356,10 +1356,10 @@ public class PhoenixHBaseAccessor {
     /**
      * Save metdata on updates.
      *
-     * @param metricMetadata @Collection<@TimelineMetricMetadata>
+     * @param metricMetadata @Collection<@MetricMetadata>
      * @throws java.sql.SQLException
      */
-    public void saveMetricMetadata(Collection<TimelineMetricMetadata> metricMetadata) throws SQLException {
+    public void saveMetricMetadata(Collection<MetricMetadata> metricMetadata) throws SQLException {
         if (metricMetadata.isEmpty()) {
             LOG.info("No metadata records to save.");
             return;
@@ -1377,9 +1377,9 @@ public class PhoenixHBaseAccessor {
              * */
             int rowCount = 0;
 
-            for (TimelineMetricMetadata metadata : metricMetadata) {
+            for (MetricMetadata metadata : metricMetadata) {
                 if (LOG.isTraceEnabled()) {
-                    LOG.trace("TimelineMetricMetadata: metricName = " + metadata.getMetricName()
+                    LOG.trace("MetricMetadata: metricName = " + metadata.getMetricName()
                             + ", appId = " + metadata.getAppId()
                             + ", seriesStartTime = " + metadata.getSeriesStartTime()
                     );
@@ -1468,8 +1468,8 @@ public class PhoenixHBaseAccessor {
     }
 
     // No filter criteria support for now.
-    public Map<TimelineMetricMetadataKey, TimelineMetricMetadata> getTimelineMetricMetadata() throws SQLException {
-        Map<TimelineMetricMetadataKey, TimelineMetricMetadata> metadataMap = new HashMap<>();
+    public Map<MetricMetadataKey, MetricMetadata> getTimelineMetricMetadata() throws SQLException {
+        Map<MetricMetadataKey, MetricMetadata> metadataMap = new HashMap<>();
         Connection conn = getConnection();
         PreparedStatement stmt = null;
         ResultSet rs = null;
@@ -1486,7 +1486,7 @@ public class PhoenixHBaseAccessor {
             while (rs.next()) {
                 String metricName = rs.getString("METRIC_NAME");
                 String appId = rs.getString("APP_ID");
-                TimelineMetricMetadata metadata = new TimelineMetricMetadata(
+                MetricMetadata metadata = new MetricMetadata(
                         metricName,
                         appId,
                         rs.getString("UNITS"),
@@ -1495,7 +1495,7 @@ public class PhoenixHBaseAccessor {
                         rs.getBoolean("SUPPORTS_AGGREGATION")
                 );
 
-                TimelineMetricMetadataKey key = new TimelineMetricMetadataKey(metricName, appId);
+                MetricMetadataKey key = new MetricMetadataKey(metricName, appId);
                 metadata.setIsPersisted(true); // Always true on retrieval
                 metadataMap.put(key, metadata);
             }

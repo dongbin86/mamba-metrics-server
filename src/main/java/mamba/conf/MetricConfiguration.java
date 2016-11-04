@@ -1,6 +1,5 @@
 package mamba.conf;
 
-import mamba.store.TimelineMetricConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -14,9 +13,9 @@ import org.springframework.context.annotation.Configuration;
 public class MetricConfiguration {
 
     @Bean
-    public TimelineMetricConfiguration metricsConfiguration() {
+    public mamba.store.MetricConfiguration metricsConfiguration() {
 
-        return new TimelineMetricConfiguration();
+        return new mamba.store.MetricConfiguration();
     }
 
 }

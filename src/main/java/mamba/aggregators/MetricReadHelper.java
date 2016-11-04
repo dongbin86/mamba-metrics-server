@@ -1,8 +1,8 @@
 package mamba.aggregators;
 
 
-import mamba.metrics.SingleValuedTimelineMetric;
-import mamba.metrics.TimelineMetric;
+import mamba.metrics.Metric;
+import mamba.metrics.SingleValuedMetric;
 import mamba.store.PhoenixHBaseAccessor;
 
 import java.io.IOException;
@@ -13,31 +13,31 @@ import java.util.TreeMap;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricReadHelper {
+public class MetricReadHelper {
 
     private boolean ignoreInstance = false;
 
-    public TimelineMetricReadHelper() {
+    public MetricReadHelper() {
     }
 
-    public TimelineMetricReadHelper(boolean ignoreInstance) {
+    public MetricReadHelper(boolean ignoreInstance) {
         this.ignoreInstance = ignoreInstance;
     }
 
-    public TimelineMetric getTimelineMetricFromResultSet(ResultSet rs)
+    public Metric getTimelineMetricFromResultSet(ResultSet rs)
             throws SQLException, IOException {
-        TimelineMetric metric = getTimelineMetricCommonsFromResultSet(rs);
+        Metric metric = getTimelineMetricCommonsFromResultSet(rs);
         TreeMap<Long, Double> sortedByTimeMetrics =
                 PhoenixHBaseAccessor.readMetricFromJSON(rs.getString("METRICS"));
         metric.setMetricValues(sortedByTimeMetrics);
         return metric;
     }
 
-    public SingleValuedTimelineMetric getAggregatedTimelineMetricFromResultSet(ResultSet rs,
+    public SingleValuedMetric getAggregatedTimelineMetricFromResultSet(ResultSet rs,
                                                                                Function f) throws SQLException, IOException {
 
         Function function = (f != null) ? f : Function.DEFAULT_VALUE_FUNCTION;
-        SingleValuedTimelineMetric metric = new SingleValuedTimelineMetric(
+        SingleValuedMetric metric = new SingleValuedMetric(
                 rs.getString("METRIC_NAME") + function.getSuffix(),
                 rs.getString("APP_ID"),
                 rs.getString("INSTANCE_ID"),
@@ -74,9 +74,9 @@ public class TimelineMetricReadHelper {
     /**
      * Returns common part of timeline metrics record without the values.
      */
-    public TimelineMetric getTimelineMetricCommonsFromResultSet(ResultSet rs)
+    public Metric getTimelineMetricCommonsFromResultSet(ResultSet rs)
             throws SQLException {
-        TimelineMetric metric = new TimelineMetric();
+        Metric metric = new Metric();
         metric.setMetricName(rs.getString("METRIC_NAME"));
         metric.setAppId(rs.getString("APP_ID"));
         if (!ignoreInstance) {
@@ -116,8 +116,8 @@ public class TimelineMetricReadHelper {
     }
 
 
-    public TimelineClusterMetric fromResultSet(ResultSet rs) throws SQLException {
-        return new TimelineClusterMetric(
+    public ClusterMetric fromResultSet(ResultSet rs) throws SQLException {
+        return new ClusterMetric(
                 rs.getString("METRIC_NAME"),
                 rs.getString("APP_ID"),
                 ignoreInstance ? null : rs.getString("INSTANCE_ID"),
@@ -137,9 +137,9 @@ public class TimelineMetricReadHelper {
         return metricHostAggregate;
     }
 
-    public TimelineMetric getTimelineMetricKeyFromResultSet(ResultSet rs)
+    public Metric getTimelineMetricKeyFromResultSet(ResultSet rs)
             throws SQLException, IOException {
-        TimelineMetric metric = new TimelineMetric();
+        Metric metric = new Metric();
         metric.setMetricName(rs.getString("METRIC_NAME"));
         metric.setAppId(rs.getString("APP_ID"));
         metric.setInstanceId(rs.getString("INSTANCE_ID"));

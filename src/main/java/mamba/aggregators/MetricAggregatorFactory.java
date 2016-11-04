@@ -1,18 +1,19 @@
 package mamba.aggregators;
 
-import mamba.discovery.TimelineMetricMetadataManager;
+import mamba.aggregators.v2.MetricClusterAggregator;
+import mamba.discovery.MetricMetadataManager;
 import mamba.store.PhoenixHBaseAccessor;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.hadoop.conf.Configuration;
 
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static mamba.query.PhoenixTransactSQL.*;
-import static mamba.store.TimelineMetricConfiguration.*;
+import static mamba.store.MetricConfiguration.*;
 
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricAggregatorFactory {
+public class MetricAggregatorFactory {
 
     private static final String HOST_AGGREGATE_MINUTE_CHECKPOINT_FILE =
             "timeline-metrics-host-aggregator-checkpoint";
@@ -37,7 +38,7 @@ public class TimelineMetricAggregatorFactory {
      * Minute based aggregation for hosts.
      * Interval : 5 mins
      */
-    public static TimelineMetricAggregator createTimelineMetricAggregatorMinute(PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
+    public static MetricAggregator createTimelineMetricAggregatorMinute(PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
                 TIMELINE_METRICS_AGGREGATOR_CHECKPOINT_DIR, DEFAULT_CHECKPOINT_LOCATION);
@@ -54,8 +55,8 @@ public class TimelineMetricAggregatorFactory {
         String outputTableName = METRICS_AGGREGATE_MINUTE_TABLE_NAME;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricHostAggregator(
-                    "TimelineMetricHostAggregatorMinute",
+            return new mamba.aggregators.v2.MetricHostAggregator(
+                    "MetricHostAggregatorMinute",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -67,8 +68,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricHostAggregator(
-                "TimelineMetricHostAggregatorMinute",
+        return new MetricHostAggregator(
+                "MetricHostAggregatorMinute",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,
@@ -83,7 +84,7 @@ public class TimelineMetricAggregatorFactory {
      * Hourly aggregation for hosts.
      * Interval : 1 hour
      */
-    public static TimelineMetricAggregator createTimelineMetricAggregatorHourly
+    public static MetricAggregator createTimelineMetricAggregatorHourly
     (PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
@@ -101,8 +102,8 @@ public class TimelineMetricAggregatorFactory {
         String outputTableName = METRICS_AGGREGATE_HOURLY_TABLE_NAME;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricHostAggregator(
-                    "TimelineMetricHostAggregatorHourly",
+            return new mamba.aggregators.v2.MetricHostAggregator(
+                    "MetricHostAggregatorHourly",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -114,8 +115,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricHostAggregator(
-                "TimelineMetricHostAggregatorHourly",
+        return new MetricHostAggregator(
+                "MetricHostAggregatorHourly",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,
@@ -130,7 +131,7 @@ public class TimelineMetricAggregatorFactory {
      * Daily aggregation for hosts.
      * Interval : 1 day
      */
-    public static TimelineMetricAggregator createTimelineMetricAggregatorDaily
+    public static MetricAggregator createTimelineMetricAggregatorDaily
     (PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
@@ -148,8 +149,8 @@ public class TimelineMetricAggregatorFactory {
         String outputTableName = METRICS_AGGREGATE_DAILY_TABLE_NAME;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricHostAggregator(
-                    "TimelineMetricHostAggregatorDaily",
+            return new mamba.aggregators.v2.MetricHostAggregator(
+                    "MetricHostAggregatorDaily",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -161,8 +162,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricHostAggregator(
-                "TimelineMetricHostAggregatorDaily",
+        return new MetricHostAggregator(
+                "MetricHostAggregatorDaily",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,
@@ -178,9 +179,9 @@ public class TimelineMetricAggregatorFactory {
      * Interval : 2 mins
      * Timeslice : 30 sec
      */
-    public static TimelineMetricAggregator createTimelineClusterAggregatorSecond(
+    public static MetricAggregator createTimelineClusterAggregatorSecond(
             PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf,
-            TimelineMetricMetadataManager metadataManager) {
+            MetricMetadataManager metadataManager) {
 
         String checkpointDir = metricsConf.get(
                 TIMELINE_METRICS_AGGREGATOR_CHECKPOINT_DIR, DEFAULT_CHECKPOINT_LOCATION);
@@ -202,8 +203,8 @@ public class TimelineMetricAggregatorFactory {
         String aggregatorDisabledParam = CLUSTER_AGGREGATOR_SECOND_DISABLED;
 
         // Second based aggregation have added responsibility of time slicing
-        return new TimelineMetricClusterAggregatorSecond(
-                "TimelineClusterAggregatorSecond",
+        return new MetricClusterAggregatorSecond(
+                "ClusterAggregatorSecond",
                 metadataManager,
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
@@ -221,7 +222,7 @@ public class TimelineMetricAggregatorFactory {
      * Minute aggregation for cluster.
      * Interval : 5 mins
      */
-    public static TimelineMetricAggregator createTimelineClusterAggregatorMinute(
+    public static MetricAggregator createTimelineClusterAggregatorMinute(
             PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
@@ -241,8 +242,8 @@ public class TimelineMetricAggregatorFactory {
         String aggregatorDisabledParam = CLUSTER_AGGREGATOR_MINUTE_DISABLED;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricClusterAggregator(
-                    "TimelineClusterAggregatorMinute",
+            return new MetricClusterAggregator(
+                    "ClusterAggregatorMinute",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -254,8 +255,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricClusterAggregator(
-                "TimelineClusterAggregatorMinute",
+        return new mamba.aggregators.MetricClusterAggregator(
+                "ClusterAggregatorMinute",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,
@@ -271,7 +272,7 @@ public class TimelineMetricAggregatorFactory {
      * Hourly aggregation for cluster.
      * Interval : 1 hour
      */
-    public static TimelineMetricAggregator createTimelineClusterAggregatorHourly(
+    public static MetricAggregator createTimelineClusterAggregatorHourly(
             PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
@@ -291,8 +292,8 @@ public class TimelineMetricAggregatorFactory {
         String aggregatorDisabledParam = CLUSTER_AGGREGATOR_HOUR_DISABLED;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricClusterAggregator(
-                    "TimelineClusterAggregatorHourly",
+            return new MetricClusterAggregator(
+                    "ClusterAggregatorHourly",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -304,8 +305,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricClusterAggregator(
-                "TimelineClusterAggregatorHourly",
+        return new mamba.aggregators.MetricClusterAggregator(
+                "ClusterAggregatorHourly",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,
@@ -321,7 +322,7 @@ public class TimelineMetricAggregatorFactory {
      * Daily aggregation for cluster.
      * Interval : 1 day
      */
-    public static TimelineMetricAggregator createTimelineClusterAggregatorDaily(
+    public static MetricAggregator createTimelineClusterAggregatorDaily(
             PhoenixHBaseAccessor hBaseAccessor, Configuration metricsConf) {
 
         String checkpointDir = metricsConf.get(
@@ -341,8 +342,8 @@ public class TimelineMetricAggregatorFactory {
         String aggregatorDisabledParam = CLUSTER_AGGREGATOR_DAILY_DISABLED;
 
         if (useGroupByAggregator(metricsConf)) {
-            return new mamba.aggregators.v2.TimelineMetricClusterAggregator(
-                    "TimelineClusterAggregatorDaily",
+            return new MetricClusterAggregator(
+                    "ClusterAggregatorDaily",
                     hBaseAccessor, metricsConf,
                     checkpointLocation,
                     sleepIntervalMillis,
@@ -354,8 +355,8 @@ public class TimelineMetricAggregatorFactory {
             );
         }
 
-        return new TimelineMetricClusterAggregator(
-                "TimelineClusterAggregatorDaily",
+        return new mamba.aggregators.MetricClusterAggregator(
+                "ClusterAggregatorDaily",
                 hBaseAccessor, metricsConf,
                 checkpointLocation,
                 sleepIntervalMillis,

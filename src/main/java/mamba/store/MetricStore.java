@@ -13,21 +13,21 @@ import java.util.Set;
  */
 public interface MetricStore {
 
-    TimelineMetrics getTimelineMetrics(List<String> metricNames, List<String> hostnames,
+    Metrics getTimelineMetrics(List<String> metricNames, List<String> hostnames,
                                        String applicationId, String instanceId, Long startTime,
                                        Long endTime, Precision precision, Integer limit, boolean groupedByHosts,
                                        TopNConfig topNConfig, String seriesAggregateFunction)
             throws SQLException, IOException;
 
 
-    TimelinePutResponse putMetrics(TimelineMetrics metrics) throws SQLException, IOException;
+    PutResponse putMetrics(Metrics metrics) throws SQLException, IOException;
 
 
-    TimelinePutResponse putContainerMetrics(List<ContainerMetric> metrics)
+    PutResponse putContainerMetrics(List<ContainerMetric> metrics)
             throws SQLException, IOException;
 
 
-    Map<String, List<TimelineMetricMetadata>> getTimelineMetricMetadata() throws SQLException, IOException;
+    Map<String, List<MetricMetadata>> getTimelineMetricMetadata() throws SQLException, IOException;
 
 
     Map<String, Set<String>> getHostAppsMetadata() throws SQLException, IOException;

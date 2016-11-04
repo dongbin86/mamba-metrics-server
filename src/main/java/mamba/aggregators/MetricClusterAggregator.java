@@ -17,20 +17,20 @@ import static mamba.query.PhoenixTransactSQL.*;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricClusterAggregator extends AbstractTimelineAggregator {
-    private final TimelineMetricReadHelper readHelper = new TimelineMetricReadHelper(true);
+public class MetricClusterAggregator extends AbstractAggregator {
+    private final MetricReadHelper readHelper = new MetricReadHelper(true);
     private final boolean isClusterPrecisionInputTable;
 
-    public TimelineMetricClusterAggregator(String aggregatorName,
-                                           PhoenixHBaseAccessor hBaseAccessor,
-                                           Configuration metricsConf,
-                                           String checkpointLocation,
-                                           Long sleepIntervalMillis,
-                                           Integer checkpointCutOffMultiplier,
-                                           String hostAggregatorDisabledParam,
-                                           String inputTableName,
-                                           String outputTableName,
-                                           Long nativeTimeRangeDelay) {
+    public MetricClusterAggregator(String aggregatorName,
+                                   PhoenixHBaseAccessor hBaseAccessor,
+                                   Configuration metricsConf,
+                                   String checkpointLocation,
+                                   Long sleepIntervalMillis,
+                                   Integer checkpointCutOffMultiplier,
+                                   String hostAggregatorDisabledParam,
+                                   String inputTableName,
+                                   String outputTableName,
+                                   Long nativeTimeRangeDelay) {
         super(aggregatorName, hBaseAccessor, metricsConf, checkpointLocation,
                 sleepIntervalMillis, checkpointCutOffMultiplier,
                 hostAggregatorDisabledParam, inputTableName, outputTableName,
@@ -60,22 +60,22 @@ public class TimelineMetricClusterAggregator extends AbstractTimelineAggregator 
 
     @Override
     protected void aggregate(ResultSet rs, long startTime, long endTime) throws IOException, SQLException {
-        Map<TimelineClusterMetric, MetricHostAggregate> hostAggregateMap = aggregateMetricsFromResultSet(rs, endTime);
+        Map<ClusterMetric, MetricHostAggregate> hostAggregateMap = aggregateMetricsFromResultSet(rs, endTime);
 
         LOG.info("Saving " + hostAggregateMap.size() + " metric aggregates.");
         hBaseAccessor.saveClusterTimeAggregateRecords(hostAggregateMap, outputTableName);
     }
 
-    private Map<TimelineClusterMetric, MetricHostAggregate> aggregateMetricsFromResultSet(ResultSet rs, long endTime)
+    private Map<ClusterMetric, MetricHostAggregate> aggregateMetricsFromResultSet(ResultSet rs, long endTime)
             throws IOException, SQLException {
 
-        TimelineClusterMetric existingMetric = null;
+        ClusterMetric existingMetric = null;
         MetricHostAggregate hostAggregate = null;
-        Map<TimelineClusterMetric, MetricHostAggregate> hostAggregateMap =
-                new HashMap<TimelineClusterMetric, MetricHostAggregate>();
+        Map<ClusterMetric, MetricHostAggregate> hostAggregateMap =
+                new HashMap<ClusterMetric, MetricHostAggregate>();
 
         while (rs.next()) {
-            TimelineClusterMetric currentMetric = readHelper.fromResultSet(rs);
+            ClusterMetric currentMetric = readHelper.fromResultSet(rs);
 
             MetricClusterAggregate currentHostAggregate =
                     isClusterPrecisionInputTable ?

@@ -1,7 +1,7 @@
 package mamba.aggregators.v2;
 
 
-import mamba.aggregators.AbstractTimelineAggregator;
+import mamba.aggregators.AbstractAggregator;
 import mamba.query.Condition;
 import mamba.query.EmptyCondition;
 import mamba.store.PhoenixHBaseAccessor;
@@ -18,19 +18,19 @@ import static mamba.query.PhoenixTransactSQL.METRICS_CLUSTER_AGGREGATE_TABLE_NAM
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricClusterAggregator extends AbstractTimelineAggregator {
+public class MetricClusterAggregator extends AbstractAggregator {
     private final String aggregateColumnName;
 
-    public TimelineMetricClusterAggregator(String aggregatorName,
-                                           PhoenixHBaseAccessor hBaseAccessor,
-                                           Configuration metricsConf,
-                                           String checkpointLocation,
-                                           Long sleepIntervalMillis,
-                                           Integer checkpointCutOffMultiplier,
-                                           String hostAggregatorDisabledParam,
-                                           String inputTableName,
-                                           String outputTableName,
-                                           Long nativeTimeRangeDelay) {
+    public MetricClusterAggregator(String aggregatorName,
+                                   PhoenixHBaseAccessor hBaseAccessor,
+                                   Configuration metricsConf,
+                                   String checkpointLocation,
+                                   Long sleepIntervalMillis,
+                                   Integer checkpointCutOffMultiplier,
+                                   String hostAggregatorDisabledParam,
+                                   String inputTableName,
+                                   String outputTableName,
+                                   Long nativeTimeRangeDelay) {
         super(aggregatorName, hBaseAccessor, metricsConf, checkpointLocation,
                 sleepIntervalMillis, checkpointCutOffMultiplier,
                 hostAggregatorDisabledParam, inputTableName, outputTableName,

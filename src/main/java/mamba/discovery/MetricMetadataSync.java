@@ -1,6 +1,6 @@
 package mamba.discovery;
 
-import mamba.metrics.TimelineMetricMetadata;
+import mamba.metrics.MetricMetadata;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -10,20 +10,20 @@ import java.util.*;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricMetadataSync implements Runnable {
-    private static final Log LOG = LogFactory.getLog(TimelineMetricMetadataSync.class);
+public class MetricMetadataSync implements Runnable {
+    private static final Log LOG = LogFactory.getLog(MetricMetadataSync.class);
 
-    private final TimelineMetricMetadataManager cacheManager;
+    private final MetricMetadataManager cacheManager;
 
-    public TimelineMetricMetadataSync(TimelineMetricMetadataManager cacheManager) {
+    public MetricMetadataSync(MetricMetadataManager cacheManager) {
         this.cacheManager = cacheManager;
     }
 
     @Override
     public void run() {
-        List<TimelineMetricMetadata> metadataToPersist = new ArrayList<>();
+        List<MetricMetadata> metadataToPersist = new ArrayList<>();
         // Find all entries to persist
-        for (TimelineMetricMetadata metadata : cacheManager.getMetadataCache().values()) {
+        for (MetricMetadata metadata : cacheManager.getMetadataCache().values()) {
             if (!metadata.isPersisted()) {
                 metadataToPersist.add(metadata);
             }
@@ -62,8 +62,8 @@ public class TimelineMetricMetadataSync implements Runnable {
         }
         // Mark corresponding entries as persisted to skip on next run
         if (markSuccess) {
-            for (TimelineMetricMetadata metadata : metadataToPersist) {
-                TimelineMetricMetadataKey key = new TimelineMetricMetadataKey(
+            for (MetricMetadata metadata : metadataToPersist) {
+                MetricMetadataKey key = new MetricMetadataKey(
                         metadata.getMetricName(), metadata.getAppId()
                 );
 

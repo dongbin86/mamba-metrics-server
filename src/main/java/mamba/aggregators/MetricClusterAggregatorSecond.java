@@ -1,8 +1,8 @@
 package mamba.aggregators;
 
-import mamba.discovery.TimelineMetricMetadataManager;
+import mamba.discovery.MetricMetadataManager;
+import mamba.metrics.Metric;
 import mamba.metrics.PostProcessingUtil;
-import mamba.metrics.TimelineMetric;
 import mamba.query.Condition;
 import mamba.query.DefaultCondition;
 import mamba.store.PhoenixHBaseAccessor;
@@ -17,39 +17,39 @@ import java.util.*;
 
 import static mamba.query.PhoenixTransactSQL.GET_METRIC_SQL;
 import static mamba.query.PhoenixTransactSQL.METRICS_RECORD_TABLE_NAME;
-import static mamba.store.TimelineMetricConfiguration.SERVER_SIDE_TIMESIFT_ADJUSTMENT;
-import static mamba.store.TimelineMetricConfiguration.TIMELINE_METRICS_CLUSTER_AGGREGATOR_INTERPOLATION_ENABLED;
+import static mamba.store.MetricConfiguration.SERVER_SIDE_TIMESIFT_ADJUSTMENT;
+import static mamba.store.MetricConfiguration.TIMELINE_METRICS_CLUSTER_AGGREGATOR_INTERPOLATION_ENABLED;
 
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggregator {
+public class MetricClusterAggregatorSecond extends AbstractAggregator {
     // Aggregator to perform app-level aggregates for host metrics
-    private final TimelineMetricAppAggregator appAggregator;
+    private final MetricAppAggregator appAggregator;
     // 1 minute client side buffering adjustment
     private final Long serverTimeShiftAdjustment;
     private final boolean interpolationEnabled;
     public Long timeSliceIntervalMillis;
-    private TimelineMetricReadHelper timelineMetricReadHelper = new TimelineMetricReadHelper(true);
+    private MetricReadHelper metricReadHelper = new MetricReadHelper(true);
 
 
-    public TimelineMetricClusterAggregatorSecond(String aggregatorName,
-                                                 TimelineMetricMetadataManager metadataManager,
-                                                 PhoenixHBaseAccessor hBaseAccessor,
-                                                 Configuration metricsConf,
-                                                 String checkpointLocation,
-                                                 Long sleepIntervalMillis,
-                                                 Integer checkpointCutOffMultiplier,
-                                                 String aggregatorDisabledParam,
-                                                 String tableName,
-                                                 String outputTableName,
-                                                 Long nativeTimeRangeDelay,
-                                                 Long timeSliceInterval) {
+    public MetricClusterAggregatorSecond(String aggregatorName,
+                                         MetricMetadataManager metadataManager,
+                                         PhoenixHBaseAccessor hBaseAccessor,
+                                         Configuration metricsConf,
+                                         String checkpointLocation,
+                                         Long sleepIntervalMillis,
+                                         Integer checkpointCutOffMultiplier,
+                                         String aggregatorDisabledParam,
+                                         String tableName,
+                                         String outputTableName,
+                                         Long nativeTimeRangeDelay,
+                                         Long timeSliceInterval) {
         super(aggregatorName, hBaseAccessor, metricsConf, checkpointLocation,
                 sleepIntervalMillis, checkpointCutOffMultiplier, aggregatorDisabledParam,
                 tableName, outputTableName, nativeTimeRangeDelay);
 
-        appAggregator = new TimelineMetricAppAggregator(metadataManager, metricsConf);
+        appAggregator = new MetricAppAggregator(metadataManager, metricsConf);
         this.timeSliceIntervalMillis = timeSliceInterval;
         this.serverTimeShiftAdjustment = Long.parseLong(metricsConf.get(SERVER_SIDE_TIMESIFT_ADJUSTMENT, "90000"));
         this.interpolationEnabled = Boolean.parseBoolean(metricsConf.get(TIMELINE_METRICS_CLUSTER_AGGREGATOR_INTERPOLATION_ENABLED, "true"));
@@ -64,7 +64,7 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
         List<Long[]> timeSlices = getTimeSlices(startTime - serverTimeShiftAdjustment, endTime - serverTimeShiftAdjustment);
         // Initialize app aggregates for host metrics
         appAggregator.init();
-        Map<TimelineClusterMetric, MetricClusterAggregate> aggregateClusterMetrics =
+        Map<ClusterMetric, MetricClusterAggregate> aggregateClusterMetrics =
                 aggregateMetricsFromResultSet(rs, timeSlices);
 
         LOG.info("Saving " + aggregateClusterMetrics.size() + " metric aggregates.");
@@ -101,18 +101,18 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
         return timeSlices;
     }
 
-    private Map<TimelineClusterMetric, MetricClusterAggregate> aggregateMetricsFromResultSet(ResultSet rs, List<Long[]> timeSlices)
+    private Map<ClusterMetric, MetricClusterAggregate> aggregateMetricsFromResultSet(ResultSet rs, List<Long[]> timeSlices)
             throws SQLException, IOException {
-        Map<TimelineClusterMetric, MetricClusterAggregate> aggregateClusterMetrics =
-                new HashMap<TimelineClusterMetric, MetricClusterAggregate>();
+        Map<ClusterMetric, MetricClusterAggregate> aggregateClusterMetrics =
+                new HashMap<ClusterMetric, MetricClusterAggregate>();
 
-        TimelineMetric metric = null;
+        Metric metric = null;
         if (rs.next()) {
-            metric = timelineMetricReadHelper.getTimelineMetricFromResultSet(rs);
+            metric = metricReadHelper.getTimelineMetricFromResultSet(rs);
 
             // Call slice after all rows for a host are read
             while (rs.next()) {
-                TimelineMetric nextMetric = timelineMetricReadHelper.getTimelineMetricFromResultSet(rs);
+                Metric nextMetric = metricReadHelper.getTimelineMetricFromResultSet(rs);
                 // If rows belong to same host combine them before slicing. This
                 // avoids issues across rows that belong to same hosts but get
                 // counted as coming from different ones.
@@ -140,16 +140,16 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
      * timeline.metrics.cluster.aggregator.minute.timeslice.interval
      * Normalize value by averaging them within the interval
      */
-    protected void processAggregateClusterMetrics(Map<TimelineClusterMetric, MetricClusterAggregate> aggregateClusterMetrics,
-                                                  TimelineMetric metric, List<Long[]> timeSlices) {
+    protected void processAggregateClusterMetrics(Map<ClusterMetric, MetricClusterAggregate> aggregateClusterMetrics,
+                                                  Metric metric, List<Long[]> timeSlices) {
         // Create time slices
-        Map<TimelineClusterMetric, Double> clusterMetrics = sliceFromTimelineMetric(metric, timeSlices);
+        Map<ClusterMetric, Double> clusterMetrics = sliceFromTimelineMetric(metric, timeSlices);
 
         if (clusterMetrics != null && !clusterMetrics.isEmpty()) {
-            for (Map.Entry<TimelineClusterMetric, Double> clusterMetricEntry :
+            for (Map.Entry<ClusterMetric, Double> clusterMetricEntry :
                     clusterMetrics.entrySet()) {
 
-                TimelineClusterMetric clusterMetric = clusterMetricEntry.getKey();
+                ClusterMetric clusterMetric = clusterMetricEntry.getKey();
                 Double avgValue = clusterMetricEntry.getValue();
 
                 MetricClusterAggregate aggregate = aggregateClusterMetrics.get(clusterMetric);
@@ -169,15 +169,15 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
         }
     }
 
-    protected Map<TimelineClusterMetric, Double> sliceFromTimelineMetric(
-            TimelineMetric timelineMetric, List<Long[]> timeSlices) {
+    protected Map<ClusterMetric, Double> sliceFromTimelineMetric(
+            Metric timelineMetric, List<Long[]> timeSlices) {
 
         if (timelineMetric.getMetricValues().isEmpty()) {
             return null;
         }
 
-        Map<TimelineClusterMetric, Double> timelineClusterMetricMap =
-                new HashMap<TimelineClusterMetric, Double>();
+        Map<ClusterMetric, Double> timelineClusterMetricMap =
+                new HashMap<ClusterMetric, Double>();
 
         Long timeShift = timelineMetric.getTimestamp() - timelineMetric.getStartTime();
         if (timeShift < 0) {
@@ -187,7 +187,7 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
         }
 
         Long prevTimestamp = -1l;
-        TimelineClusterMetric prevMetric = null;
+        ClusterMetric prevMetric = null;
         int count = 0;
         double sum = 0.0;
 
@@ -201,7 +201,7 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
             Long timestamp = getSliceTimeForMetric(timeSlices, Long.parseLong(metric.getKey().toString()));
             if (timestamp != -1) {
                 // Metric is within desired time range
-                TimelineClusterMetric clusterMetric = new TimelineClusterMetric(
+                ClusterMetric clusterMetric = new ClusterMetric(
                         timelineMetric.getMetricName(),
                         timelineMetric.getAppId(),
                         timelineMetric.getInstanceId(),
@@ -240,13 +240,13 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
         return timelineClusterMetricMap;
     }
 
-    private void interpolateMissingPeriods(Map<TimelineClusterMetric, Double> timelineClusterMetricMap,
-                                           TimelineMetric timelineMetric,
+    private void interpolateMissingPeriods(Map<ClusterMetric, Double> timelineClusterMetricMap,
+                                           Metric metric,
                                            List<Long[]> timeSlices,
                                            Map<Long, Double> timeSliceValueMap) {
 
 
-        if (StringUtils.isNotEmpty(timelineMetric.getType()) && "COUNTER".equalsIgnoreCase(timelineMetric.getType())) {
+        if (StringUtils.isNotEmpty(metric.getType()) && "COUNTER".equalsIgnoreCase(metric.getType())) {
             //For Counter Based metrics, ok to do interpolation and extrapolation
 
             List<Long> requiredTimestamps = new ArrayList<>();
@@ -255,19 +255,19 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
                     requiredTimestamps.add(timeSlice[1]);
                 }
             }
-            Map<Long, Double> interpolatedValuesMap = PostProcessingUtil.interpolate(timelineMetric.getMetricValues(), requiredTimestamps);
+            Map<Long, Double> interpolatedValuesMap = PostProcessingUtil.interpolate(metric.getMetricValues(), requiredTimestamps);
 
             if (interpolatedValuesMap != null) {
                 for (Map.Entry<Long, Double> entry : interpolatedValuesMap.entrySet()) {
                     Double interpolatedValue = entry.getValue();
 
                     if (interpolatedValue != null) {
-                        TimelineClusterMetric clusterMetric = new TimelineClusterMetric(
-                                timelineMetric.getMetricName(),
-                                timelineMetric.getAppId(),
-                                timelineMetric.getInstanceId(),
+                        ClusterMetric clusterMetric = new ClusterMetric(
+                                metric.getMetricName(),
+                                metric.getAppId(),
+                                metric.getInstanceId(),
                                 entry.getKey(),
-                                timelineMetric.getType());
+                                metric.getType());
 
                         timelineClusterMetricMap.put(clusterMetric, interpolatedValue);
                     } else {
@@ -279,12 +279,12 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
             //For other metrics, ok to do only interpolation
 
             Double defaultNextSeenValue = null;
-            if (MapUtils.isEmpty(timeSliceValueMap) && MapUtils.isNotEmpty(timelineMetric.getMetricValues())) {
+            if (MapUtils.isEmpty(timeSliceValueMap) && MapUtils.isNotEmpty(metric.getMetricValues())) {
                 //If no value was found within the start_time based slices, but the metric has value in the server_time range,
                 // use that.
 
-                LOG.debug("No value found within range for metric : " + timelineMetric.getMetricName());
-                Map.Entry<Long, Double> firstEntry = timelineMetric.getMetricValues().firstEntry();
+                LOG.debug("No value found within range for metric : " + metric.getMetricName());
+                Map.Entry<Long, Double> firstEntry = metric.getMetricValues().firstEntry();
                 defaultNextSeenValue = firstEntry.getValue();
                 LOG.debug("Found a data point outside timeslice range: " + new Date(firstEntry.getKey()) + ": " + defaultNextSeenValue);
             }
@@ -320,12 +320,12 @@ public class TimelineMetricClusterAggregatorSecond extends AbstractTimelineAggre
                             (nextTimeSlice != null ? nextTimeSlice[1] : null), nextSeenValue);
 
                     if (interpolatedValue != null) {
-                        TimelineClusterMetric clusterMetric = new TimelineClusterMetric(
-                                timelineMetric.getMetricName(),
-                                timelineMetric.getAppId(),
-                                timelineMetric.getInstanceId(),
+                        ClusterMetric clusterMetric = new ClusterMetric(
+                                metric.getMetricName(),
+                                metric.getAppId(),
+                                metric.getInstanceId(),
                                 timeSlice[1],
-                                timelineMetric.getType());
+                                metric.getType());
 
                         LOG.debug("Interpolated value : " + interpolatedValue);
                         timelineClusterMetricMap.put(clusterMetric, interpolatedValue);

@@ -1,8 +1,8 @@
 package mamba.cache;
 
 
-import mamba.metrics.TimelineMetric;
-import mamba.metrics.TimelineMetrics;
+import mamba.metrics.Metric;
+import mamba.metrics.Metrics;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
@@ -12,10 +12,10 @@ import java.util.concurrent.ConcurrentSkipListMap;
 /**
  * Created by sanbing on 10/10/16.
  */
-public class TimelineMetricsCache {
+public class MetricsCache {
 
-    private final TimelineMetricHolder timelineMetricCache = new TimelineMetricHolder();
-    private static final Log LOG = LogFactory.getLog(TimelineMetricsCache.class);
+    private final MetricHolder metricHolder = new MetricHolder();
+    private static final Log LOG = LogFactory.getLog(MetricsCache.class);
     public static final int MAX_RECS_PER_NAME_DEFAULT = 10000;
     public static final int MAX_EVICTION_TIME_MILLIS = 59000; // ~ 1 min
     private final int maxRecsPerName;
@@ -23,25 +23,25 @@ public class TimelineMetricsCache {
     private boolean skipCounterTransform = true;
     private final Map<String, Double> counterMetricLastValue = new HashMap<String, Double>();
 
-    public TimelineMetricsCache(int maxRecsPerName, int maxEvictionTimeInMillis) {
+    public MetricsCache(int maxRecsPerName, int maxEvictionTimeInMillis) {
         this(maxRecsPerName, maxEvictionTimeInMillis, false);
     }
 
-    public TimelineMetricsCache(int maxRecsPerName, int maxEvictionTimeInMillis,
-                                boolean skipCounterTransform) {
+    public MetricsCache(int maxRecsPerName, int maxEvictionTimeInMillis,
+                        boolean skipCounterTransform) {
         this.maxRecsPerName = maxRecsPerName;
         this.maxEvictionTimeInMillis = maxEvictionTimeInMillis;
         this.skipCounterTransform = skipCounterTransform;
     }
 
-    class TimelineMetricWrapper {
+    class MetricWrapper {
         private long timeDiff = -1;
         private long oldestTimestamp = -1;
-        private TimelineMetric timelineMetric;
+        private Metric metric;
 
-        TimelineMetricWrapper(TimelineMetric timelineMetric) {
-            this.timelineMetric = timelineMetric;
-            this.oldestTimestamp = timelineMetric.getStartTime();
+        MetricWrapper(Metric metric) {
+            this.metric = metric;
+            this.oldestTimestamp = metric.getStartTime();
         }
 
         private void updateTimeDiff(long timestamp) {
@@ -52,8 +52,8 @@ public class TimelineMetricsCache {
             }
         }
 
-        public synchronized void putMetric(TimelineMetric metric) {
-            TreeMap<Long, Double> metricValues = this.timelineMetric.getMetricValues();
+        public synchronized void putMetric(Metric metric) {
+            TreeMap<Long, Double> metricValues = this.metric.getMetricValues();
             if (metricValues.size() > maxRecsPerName) {
                 // remove values for eldest maxEvictionTimeInMillis
                 long newEldestTimestamp = oldestTimestamp + maxEvictionTimeInMillis;
@@ -61,18 +61,18 @@ public class TimelineMetricsCache {
                         new TreeMap<>(metricValues.tailMap(newEldestTimestamp));
                 if (metricsSubSet.isEmpty()) {
                     oldestTimestamp = metric.getStartTime();
-                    this.timelineMetric.setStartTime(metric.getStartTime());
+                    this.metric.setStartTime(metric.getStartTime());
                 } else {
                     Long newStartTime = metricsSubSet.firstKey();
                     oldestTimestamp = newStartTime;
-                    this.timelineMetric.setStartTime(newStartTime);
+                    this.metric.setStartTime(newStartTime);
                 }
-                this.timelineMetric.setMetricValues(metricsSubSet);
+                this.metric.setMetricValues(metricsSubSet);
                 LOG.warn("Metrics cache overflow. Values for metric " +
                         metric.getMetricName() + " older than " + newEldestTimestamp +
                         " were removed to clean up the cache.");
             }
-            this.timelineMetric.addMetricValues(metric.getMetricValues());
+            this.metric.addMetricValues(metric.getMetricValues());
             updateTimeDiff(metric.getStartTime());
         }
 
@@ -80,56 +80,56 @@ public class TimelineMetricsCache {
             return timeDiff;
         }
 
-        public synchronized TimelineMetric getTimelineMetric() {
-            return timelineMetric;
+        public synchronized Metric getMetric() {
+            return metric;
         }
     }
 
     // TODO: Add weighted eviction
-    class TimelineMetricHolder extends ConcurrentSkipListMap<String, TimelineMetricWrapper> {
+    class MetricHolder extends ConcurrentSkipListMap<String, MetricWrapper> {
         private static final long serialVersionUID = 2L;
         // To avoid duplication at the end of the buffer and beginning of the next
         // segment of values
         private Map<String, Long> endOfBufferTimestamps = new HashMap<String, Long>();
 
-        public TimelineMetric evict(String metricName) {
-            TimelineMetricWrapper metricWrapper = this.get(metricName);
+        public Metric evict(String metricName) {
+            MetricWrapper metricWrapper = this.get(metricName);
 
             if (metricWrapper == null
                     || metricWrapper.getTimeDiff() < getMaxEvictionTimeInMillis()) {
                 return null;
             }
 
-            TimelineMetric timelineMetric = metricWrapper.getTimelineMetric();
+            Metric metric = metricWrapper.getMetric();
             this.remove(metricName);
 
-            return timelineMetric;
+            return metric;
         }
 
-        public TimelineMetrics evictAll() {
-            List<TimelineMetric> metricList = new ArrayList<TimelineMetric>();
+        public Metrics evictAll() {
+            List<Metric> metricList = new ArrayList<Metric>();
 
-            for (Iterator<Entry<String, TimelineMetricWrapper>> it = this.entrySet().iterator(); it.hasNext(); ) {
-                Entry<String, TimelineMetricWrapper> cacheEntry = it.next();
-                TimelineMetricWrapper metricWrapper = cacheEntry.getValue();
+            for (Iterator<Entry<String, MetricWrapper>> it = this.entrySet().iterator(); it.hasNext(); ) {
+                Entry<String, MetricWrapper> cacheEntry = it.next();
+                MetricWrapper metricWrapper = cacheEntry.getValue();
                 if (metricWrapper != null) {
-                    TimelineMetric timelineMetric = cacheEntry.getValue().getTimelineMetric();
-                    metricList.add(timelineMetric);
+                    Metric metric = cacheEntry.getValue().getMetric();
+                    metricList.add(metric);
                 }
                 it.remove();
             }
-            TimelineMetrics timelineMetrics = new TimelineMetrics();
-            timelineMetrics.setMetrics(metricList);
-            return timelineMetrics;
+            Metrics metrics = new Metrics();
+            metrics.setMetrics(metricList);
+            return metrics;
         }
 
-        public void put(String metricName, TimelineMetric timelineMetric) {
+        public void put(String metricName, Metric timelineMetric) {
             if (isDuplicate(timelineMetric)) {
                 return;
             }
-            TimelineMetricWrapper metric = this.get(metricName);
+            MetricWrapper metric = this.get(metricName);
             if (metric == null) {
-                this.put(metricName, new TimelineMetricWrapper(timelineMetric));
+                this.put(metricName, new MetricWrapper(timelineMetric));
             } else {
                 metric.putMetric(timelineMetric);
             }
@@ -140,25 +140,25 @@ public class TimelineMetricsCache {
         /**
          * Test whether last buffered timestamp is same as the newly received.
          *
-         * @param timelineMetric @TimelineMetric
+         * @param metric @Metric
          * @return true/false
          */
-        private boolean isDuplicate(TimelineMetric timelineMetric) {
-            return endOfBufferTimestamps.containsKey(timelineMetric.getMetricName())
-                    && endOfBufferTimestamps.get(timelineMetric.getMetricName()).equals(timelineMetric.getStartTime());
+        private boolean isDuplicate(Metric metric) {
+            return endOfBufferTimestamps.containsKey(metric.getMetricName())
+                    && endOfBufferTimestamps.get(metric.getMetricName()).equals(metric.getStartTime());
         }
     }
 
-    public TimelineMetric getTimelineMetric(String metricName) {
-        if (timelineMetricCache.containsKey(metricName)) {
-            return timelineMetricCache.evict(metricName);
+    public Metric getTimelineMetric(String metricName) {
+        if (metricHolder.containsKey(metricName)) {
+            return metricHolder.evict(metricName);
         }
 
         return null;
     }
 
-    public TimelineMetrics getAllMetrics() {
-        return timelineMetricCache.evictAll();
+    public Metrics getAllMetrics() {
+        return metricHolder.evictAll();
     }
 
     /**
@@ -170,30 +170,30 @@ public class TimelineMetricsCache {
         return maxEvictionTimeInMillis;
     }
 
-    public void putTimelineMetric(TimelineMetric timelineMetric) {
-        timelineMetricCache.put(timelineMetric.getMetricName(), timelineMetric);
+    public void putTimelineMetric(Metric metric) {
+        metricHolder.put(metric.getMetricName(), metric);
     }
 
-    private void transformMetricValuesToDerivative(TimelineMetric timelineMetric) {
-        String metricName = timelineMetric.getMetricName();
-        double firstValue = timelineMetric.getMetricValues().size() > 0
-                ? timelineMetric.getMetricValues().entrySet().iterator().next().getValue() : 0;
+    private void transformMetricValuesToDerivative(Metric metric) {
+        String metricName = metric.getMetricName();
+        double firstValue = metric.getMetricValues().size() > 0
+                ? metric.getMetricValues().entrySet().iterator().next().getValue() : 0;
         Double value = counterMetricLastValue.get(metricName);
         double previousValue = value != null ? value : firstValue;
-        Map<Long, Double> metricValues = timelineMetric.getMetricValues();
+        Map<Long, Double> metricValues = metric.getMetricValues();
         TreeMap<Long, Double> newMetricValues = new TreeMap<Long, Double>();
         for (Map.Entry<Long, Double> entry : metricValues.entrySet()) {
             newMetricValues.put(entry.getKey(), entry.getValue() - previousValue);
             previousValue = entry.getValue();
         }
-        timelineMetric.setMetricValues(newMetricValues);
+        metric.setMetricValues(newMetricValues);
         counterMetricLastValue.put(metricName, previousValue);
     }
 
-    public void putTimelineMetric(TimelineMetric timelineMetric, boolean isCounter) {
+    public void putTimelineMetric(Metric metric, boolean isCounter) {
         if (isCounter && !skipCounterTransform) {
-            transformMetricValuesToDerivative(timelineMetric);
+            transformMetricValuesToDerivative(metric);
         }
-        putTimelineMetric(timelineMetric);
+        putTimelineMetric(metric);
     }
 }

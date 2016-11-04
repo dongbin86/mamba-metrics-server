@@ -1,7 +1,6 @@
 package mamba.conf;
 
 import mamba.store.HBaseMetricStore;
-import mamba.store.TimelineMetricConfiguration;
 import mamba.store.MetricStore;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
@@ -13,12 +12,12 @@ import org.springframework.context.annotation.Import;
  */
 
 @Configuration
-@Import({MetricConfiguration.class})
-public class TimelineMetricStoreConfiguration {
+@Import({mamba.conf.MetricConfiguration.class})
+public class MetricStoreConfiguration {
 
 
     @Autowired
-    private TimelineMetricConfiguration metricConfiguration;
+    private mamba.store.MetricConfiguration metricConfiguration;
 
     @Bean
     public MetricStore timelineMetricStore() {

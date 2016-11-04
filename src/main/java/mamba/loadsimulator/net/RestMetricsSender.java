@@ -3,8 +3,8 @@ package mamba.loadsimulator.net;
 
 import com.google.common.base.Stopwatch;
 import mamba.loadsimulator.util.Json;
-import mamba.metrics.TimelineMetric;
-import mamba.metrics.TimelineMetrics;
+import mamba.metrics.Metric;
+import mamba.metrics.Metrics;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.io.IOException;
@@ -73,8 +73,8 @@ public class RestMetricsSender implements MetricsSender {
 
 
     public static void main(String[] args) throws IOException {
-        TimelineMetrics metrics = new TimelineMetrics();
-        TimelineMetric metric = new TimelineMetric();
+        Metrics metrics = new Metrics();
+        Metric metric = new Metric();
         metric.setMetricName("swap_total");
         metric.setAppId("HOST");
         metric.setHostName("local0");
@@ -88,7 +88,7 @@ public class RestMetricsSender implements MetricsSender {
         Map<Long, Double> values = new HashMap();
         values.put(1477767670892l,171.18301007673193d);
         metric.addMetricValues(values);
-        List<TimelineMetric> metricsList = new ArrayList();
+        List<Metric> metricsList = new ArrayList();
 
         metricsList.add(metric);
         metrics.setMetrics(metricsList);

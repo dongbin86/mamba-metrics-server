@@ -3,15 +3,15 @@ package mamba.aggregators;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineClusterMetric {
+public class ClusterMetric {
     private String metricName;
     private String appId;
     private String instanceId;
     private long timestamp;
     private String type;
 
-    public TimelineClusterMetric(String metricName, String appId, String instanceId,
-                                 long timestamp, String type) {
+    public ClusterMetric(String metricName, String appId, String instanceId,
+                         long timestamp, String type) {
         this.metricName = metricName;
         this.appId = appId;
         this.instanceId = instanceId;
@@ -48,7 +48,7 @@ public class TimelineClusterMetric {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TimelineClusterMetric that = (TimelineClusterMetric) o;
+        ClusterMetric that = (ClusterMetric) o;
 
         if (timestamp != that.timestamp) return false;
         if (appId != null ? !appId.equals(that.appId) : that.appId != null)
@@ -60,7 +60,7 @@ public class TimelineClusterMetric {
         return true;
     }
 
-    public boolean equalsExceptTime(TimelineClusterMetric metric) {
+    public boolean equalsExceptTime(ClusterMetric metric) {
         if (!metricName.equals(metric.metricName)) return false;
         if (!appId.equals(metric.appId)) return false;
         if (instanceId != null ? !instanceId.equals(metric.instanceId) : metric.instanceId != null)
@@ -80,7 +80,7 @@ public class TimelineClusterMetric {
 
     @Override
     public String toString() {
-        return "TimelineClusterMetric{" +
+        return "ClusterMetric{" +
                 "metricName='" + metricName + '\'' +
                 ", appId='" + appId + '\'' +
                 ", instanceId='" + instanceId + '\'' +

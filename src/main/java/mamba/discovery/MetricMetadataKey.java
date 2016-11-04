@@ -2,7 +2,7 @@ package mamba.discovery;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricMetadataKey {
+public class MetricMetadataKey {
 
     String metricName;
 
@@ -10,7 +10,7 @@ public class TimelineMetricMetadataKey {
     /**
      * 用于标记metrics的key,用两个字段
      * */
-    public TimelineMetricMetadataKey(String metricName, String appId) {
+    public MetricMetadataKey(String metricName, String appId) {
         this.metricName = metricName;
         this.appId = appId;
     }
@@ -32,7 +32,7 @@ public class TimelineMetricMetadataKey {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TimelineMetricMetadataKey that = (TimelineMetricMetadataKey) o;
+        MetricMetadataKey that = (MetricMetadataKey) o;
 
         if (!metricName.equals(that.metricName)) return false;
         return !(appId != null ? !appId.equals(that.appId) : that.appId != null);

@@ -11,23 +11,23 @@ import java.util.TreeMap;
 /**
  * @author dongbin  @Date: 10/28/16
  */
-public class TimelineMetrics {
+public class Metrics {
 
-    private List<TimelineMetric> metrics = new ArrayList<TimelineMetric>();
+    private List<Metric> metrics = new ArrayList<Metric>();
 
-    public TimelineMetrics() {
+    public Metrics() {
     }
 
-    public List<TimelineMetric> getMetrics() {
+    public List<Metric> getMetrics() {
         return metrics;
     }
 
-    public void setMetrics(List<TimelineMetric> metrics) {
+    public void setMetrics(List<Metric> metrics) {
         this.metrics = metrics;
     }
 
-    private boolean isEqualTimelineMetrics(TimelineMetric metric1,
-                                           TimelineMetric metric2) {
+    private boolean isEqualTimelineMetrics(Metric metric1,
+                                           Metric metric2) {
 
         boolean isEqual = true;
 
@@ -47,11 +47,11 @@ public class TimelineMetrics {
     }
 
 
-    public void addOrMergeTimelineMetric(TimelineMetric metric) {
-        TimelineMetric metricToMerge = null;
+    public void addOrMergeTimelineMetric(Metric metric) {
+        Metric metricToMerge = null;
 
         if (!metrics.isEmpty()) {
-            for (TimelineMetric timelineMetric : metrics) {
+            for (Metric timelineMetric : metrics) {
                 if (timelineMetric.equalsExceptTime(metric)) {
                     metricToMerge = timelineMetric;
                     break;
@@ -72,11 +72,11 @@ public class TimelineMetrics {
         }
     }
 
-    public void addOrMergeTimelineMetric(SingleValuedTimelineMetric metric) {
-        TimelineMetric metricToMerge = null;
+    public void addOrMergeTimelineMetric(SingleValuedMetric metric) {
+        Metric metricToMerge = null;
 
         if (!metrics.isEmpty()) {
-            for (TimelineMetric timelineMetric : metrics) {
+            for (Metric timelineMetric : metrics) {
                 if (metric.equalsExceptTime(timelineMetric)) {
                     metricToMerge = timelineMetric;
                     break;
@@ -99,18 +99,18 @@ public class TimelineMetrics {
 
     @Override
     public String toString() {
-        return "TimelineMetrics{" +
+        return "Metrics{" +
                 "allMetrics=" + metrics +
                 '}';
     }
 
 
     public static void main(String[] args) {
-        TimelineMetrics timelineMetrics = new TimelineMetrics();
-        List<TimelineMetric> metricList = new ArrayList<TimelineMetric>();
+        Metrics timelineMetrics = new Metrics();
+        List<Metric> metricList = new ArrayList<Metric>();
         timelineMetrics.setMetrics(metricList);
-        TimelineMetric metric1 = new TimelineMetric();
-        TimelineMetric metric2 = new TimelineMetric();
+        Metric metric1 = new Metric();
+        Metric metric2 = new Metric();
         metricList.add(metric1);
         metricList.add(metric2);
         metric1.setMetricName("cpu_user");
@@ -141,10 +141,10 @@ public class TimelineMetrics {
 
 
         String w = "{\"metrics\":[{\"metricName\":\"cpu_user\",\"appId\":\"1\",\"hostName\":\"c6401\",\"timestamp\":0,\"startTime\":1407949812,\"metricValues\":{\"1407949812\":1.0,\"1407949912\":1.8,\"1407950002\":0.7}},{\"metricName\":\"mem_free\",\"appId\":\"2\",\"instanceId\":\"3\",\"hostName\":\"c6401\",\"timestamp\":0,\"startTime\":1407949812,\"metricValues\":{\"1407949812\":2.5,\"1407949912\":3.0,\"1407950002\":0.9}}]}\n";
-        TimelineMetrics metrics = gson.fromJson(w, TimelineMetrics.class);
+        Metrics metrics = gson.fromJson(w, Metrics.class);
         System.out.println(metrics);
         try {
-            TimelineMetrics m = mapper.readValue(w, TimelineMetrics.class);
+            Metrics m = mapper.readValue(w, Metrics.class);
             System.out.println("made!!!!");
             System.out.println(m);
         } catch (IOException e) {

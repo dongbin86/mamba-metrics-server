@@ -1,32 +1,32 @@
 package mamba.function;
 
 import com.google.common.base.Joiner;
-import mamba.metrics.TimelineMetric;
-import mamba.metrics.TimelineMetrics;
+import mamba.metrics.Metric;
+import mamba.metrics.Metrics;
 
 import java.util.*;
 
 /**
  * Created by dongbin on 2016/10/10.
  */
-public abstract class AbstractTimelineMetricsSeriesAggregateFunction
-        implements TimelineMetricsSeriesAggregateFunction {
+public abstract class AbstractMetricsSeriesAggregateFunction
+        implements MetricsSeriesAggregateFunction {
 
     @Override
-    public TimelineMetric apply(TimelineMetrics timelineMetrics) {
+    public Metric apply(Metrics metrics) {
         Set<String> metricNameSet = new TreeSet<>();
         Set<String> hostNameSet = new TreeSet<>();
         Set<String> appIdSet = new TreeSet<>();
         Set<String> instanceIdSet = new TreeSet<>();
         TreeMap<Long, List<Double>> metricValues = new TreeMap<>();
 
-        for (TimelineMetric timelineMetric : timelineMetrics.getMetrics()) {
-            metricNameSet.add(timelineMetric.getMetricName());
-            addToSetOnlyNotNull(hostNameSet, timelineMetric.getHostName());
-            addToSetOnlyNotNull(appIdSet, timelineMetric.getAppId());
-            addToSetOnlyNotNull(instanceIdSet, timelineMetric.getInstanceId());
+        for (Metric metric : metrics.getMetrics()) {
+            metricNameSet.add(metric.getMetricName());
+            addToSetOnlyNotNull(hostNameSet, metric.getHostName());
+            addToSetOnlyNotNull(appIdSet, metric.getAppId());
+            addToSetOnlyNotNull(instanceIdSet, metric.getInstanceId());
 
-            for (Map.Entry<Long, Double> metricValue : timelineMetric.getMetricValues().entrySet()) {
+            for (Map.Entry<Long, Double> metricValue : metric.getMetricValues().entrySet()) {
                 Long timestamp = metricValue.getKey();
                 Double value = metricValue.getValue();
                 if (!metricValues.containsKey(timestamp)) {
@@ -45,16 +45,16 @@ public abstract class AbstractTimelineMetricsSeriesAggregateFunction
             aggregatedMetricValues.put(metricValue.getKey(), applyFunction(values));
         }
 
-        TimelineMetric timelineMetric = new TimelineMetric();
-        timelineMetric.setMetricName(getMetricName(metricNameSet.iterator()));
-        timelineMetric.setHostName(joinStringsWithComma(hostNameSet.iterator()));
-        timelineMetric.setAppId(joinStringsWithComma(appIdSet.iterator()));
-        timelineMetric.setInstanceId(joinStringsWithComma(instanceIdSet.iterator()));
+        Metric metric = new Metric();
+        metric.setMetricName(getMetricName(metricNameSet.iterator()));
+        metric.setHostName(joinStringsWithComma(hostNameSet.iterator()));
+        metric.setAppId(joinStringsWithComma(appIdSet.iterator()));
+        metric.setInstanceId(joinStringsWithComma(instanceIdSet.iterator()));
         if (aggregatedMetricValues.size() > 0) {
-            timelineMetric.setStartTime(aggregatedMetricValues.firstKey());
+            metric.setStartTime(aggregatedMetricValues.firstKey());
         }
-        timelineMetric.setMetricValues(aggregatedMetricValues);
-        return timelineMetric;
+        metric.setMetricValues(aggregatedMetricValues);
+        return metric;
     }
 
     protected String getMetricName(Iterator<String> metricNames) {

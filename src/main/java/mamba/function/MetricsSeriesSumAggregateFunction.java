@@ -5,19 +5,17 @@ import java.util.List;
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricsSeriesMinAggregateFunction extends AbstractTimelineMetricsSeriesAggregateFunction {
-    private static final String FUNCTION_NAME = "MIN";
+public class MetricsSeriesSumAggregateFunction extends AbstractMetricsSeriesAggregateFunction {
+    private static final String FUNCTION_NAME = "SUM";
 
     @Override
     protected Double applyFunction(List<Double> values) {
-        double min = Double.MAX_VALUE;
+        double sum = 0.0d;
         for (Double value : values) {
-            if (value < min) {
-                min = value;
-            }
+            sum += value;
         }
 
-        return min;
+        return sum;
     }
 
     @Override

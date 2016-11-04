@@ -1,6 +1,6 @@
 package mamba.aggregators.v2;
 
-import mamba.aggregators.AbstractTimelineAggregator;
+import mamba.aggregators.AbstractAggregator;
 import mamba.query.Condition;
 import mamba.query.EmptyCondition;
 import mamba.store.PhoenixHBaseAccessor;
@@ -16,18 +16,18 @@ import static mamba.query.PhoenixTransactSQL.GET_AGGREGATED_HOST_METRIC_GROUPBY_
 /**
  * Created by dongbin on 2016/10/10.
  */
-public class TimelineMetricHostAggregator extends AbstractTimelineAggregator {
+public class MetricHostAggregator extends AbstractAggregator {
 
-    public TimelineMetricHostAggregator(String aggregatorName,
-                                        PhoenixHBaseAccessor hBaseAccessor,
-                                        Configuration metricsConf,
-                                        String checkpointLocation,
-                                        Long sleepIntervalMillis,
-                                        Integer checkpointCutOffMultiplier,
-                                        String hostAggregatorDisabledParam,
-                                        String tableName,
-                                        String outputTableName,
-                                        Long nativeTimeRangeDelay) {
+    public MetricHostAggregator(String aggregatorName,
+                                PhoenixHBaseAccessor hBaseAccessor,
+                                Configuration metricsConf,
+                                String checkpointLocation,
+                                Long sleepIntervalMillis,
+                                Integer checkpointCutOffMultiplier,
+                                String hostAggregatorDisabledParam,
+                                String tableName,
+                                String outputTableName,
+                                Long nativeTimeRangeDelay) {
         super(aggregatorName, hBaseAccessor, metricsConf, checkpointLocation,
                 sleepIntervalMillis, checkpointCutOffMultiplier, hostAggregatorDisabledParam,
                 tableName, outputTableName, nativeTimeRangeDelay);

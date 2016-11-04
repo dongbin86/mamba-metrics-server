@@ -7,7 +7,7 @@ import java.util.TreeMap;
 /**
  * @author dongbin  @Date: 10/28/16
  */
-public class TimelineMetric implements Comparable<TimelineMetric> {
+public class Metric implements Comparable<Metric> {
 
 
     private String metricName;
@@ -21,12 +21,12 @@ public class TimelineMetric implements Comparable<TimelineMetric> {
     private TreeMap<Long, Double> metricValues = new TreeMap<Long, Double>();
 
     // default
-    public TimelineMetric() {
+    public Metric() {
 
     }
 
     // copy constructor
-    public TimelineMetric(TimelineMetric metric) {
+    public Metric(Metric metric) {
         setMetricName(metric.getMetricName());
         setType(metric.getType());
         setUnits(metric.getUnits());
@@ -128,7 +128,7 @@ public class TimelineMetric implements Comparable<TimelineMetric> {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
 
-        TimelineMetric metric = (TimelineMetric) o;
+        Metric metric = (Metric) o;
 
         if (!metricName.equals(metric.metricName)) return false;
         if (hostName != null ? !hostName.equals(metric.hostName) : metric.hostName != null)
@@ -143,7 +143,7 @@ public class TimelineMetric implements Comparable<TimelineMetric> {
         return true;
     }
 
-    public boolean equalsExceptTime(TimelineMetric metric) {
+    public boolean equalsExceptTime(Metric metric) {
         if (!metricName.equals(metric.metricName)) return false;
         if (hostName != null ? !hostName.equals(metric.hostName) : metric.hostName != null)
             return false;
@@ -166,7 +166,7 @@ public class TimelineMetric implements Comparable<TimelineMetric> {
     }
 
     @Override
-    public int compareTo(TimelineMetric other) {
+    public int compareTo(Metric other) {
         if (timestamp > other.timestamp) {
             return -1;
         } else if (timestamp < other.timestamp) {
@@ -178,7 +178,7 @@ public class TimelineMetric implements Comparable<TimelineMetric> {
 
     @Override
     public String toString() {
-        return "TimelineMetric{" +
+        return "Metric{" +
                 "metricName='" + metricName + '\'' +
                 ", appId='" + appId + '\'' +
                 ", instanceId='" + instanceId + '\'' +
