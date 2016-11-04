@@ -1,11 +1,8 @@
 package mamba.controller;
-
-import com.google.common.base.Joiner;
-import mamba.entity.*;
 import mamba.exception.BadRequestException;
 import mamba.metrics.*;
 import mamba.store.MetricStore;
-import mamba.entity.TimelineReader.Field;
+import mamba.store.TimelinePutResponse;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -26,7 +23,6 @@ public class Controller {
 
     private static final Log LOG = LogFactory.getLog(Controller.class);
 
-    public static final Joiner CSV_JOINER = Joiner.on(',');
 
     @Autowired
     private MetricStore metricStore;
@@ -165,78 +161,6 @@ public class Controller {
     }
 
 
-    private static SortedSet<String> parseArrayStr(String str, String delimiter) {
-        if (str == null) {
-            return null;
-        }
-        SortedSet<String> strSet = new TreeSet<String>();
-        String[] strs = str.split(delimiter);
-        for (String aStr : strs) {
-            strSet.add(aStr.trim());
-        }
-        return strSet;
-    }
-
-    private static NameValuePair parsePairStr(String str, String delimiter) {
-        if (str == null) {
-            return null;
-        }
-        String[] strs = str.split(delimiter, 2);
-        try {
-            return new NameValuePair(strs[0].trim(),
-                    GenericObjectMapper.OBJECT_READER.readValue(strs[1].trim()));
-        } catch (Exception e) {
-            // didn't work as an Object, keep it as a String
-            return new NameValuePair(strs[0].trim(), strs[1].trim());
-        }
-    }
-
-    private static Collection<NameValuePair> parsePairsStr(
-            String str, String aDelimiter, String pDelimiter) {
-        if (str == null) {
-            return null;
-        }
-        String[] strs = str.split(aDelimiter);
-        Set<NameValuePair> pairs = new HashSet<NameValuePair>();
-        for (String aStr : strs) {
-            pairs.add(parsePairStr(aStr, pDelimiter));
-        }
-        return pairs;
-    }
-
-    private static EnumSet<Field> parseFieldsStr(String str, String delimiter) {
-        if (str == null) {
-            return null;
-        }
-        String[] strs = str.split(delimiter);
-        List<Field> fieldList = new ArrayList<Field>();
-        for (String s : strs) {
-            s = s.trim().toUpperCase();
-            if (s.equals("EVENTS")) {
-                fieldList.add(Field.EVENTS);
-            } else if (s.equals("LASTEVENTONLY")) {
-                fieldList.add(Field.LAST_EVENT_ONLY);
-            } else if (s.equals("RELATEDENTITIES")) {
-                fieldList.add(Field.RELATED_ENTITIES);
-            } else if (s.equals("PRIMARYFILTERS")) {
-                fieldList.add(Field.PRIMARY_FILTERS);
-            } else if (s.equals("OTHERINFO")) {
-                fieldList.add(Field.OTHER_INFO);
-            } else {
-                throw new IllegalArgumentException("Requested nonexistent field " + s);
-            }
-        }
-        if (fieldList.size() == 0) {
-            return null;
-        }
-        Field f1 = fieldList.remove(fieldList.size() - 1);
-        if (fieldList.size() == 0) {
-            return EnumSet.of(f1);
-        } else {
-            return EnumSet.of(f1, fieldList.toArray(new Field[fieldList.size()]));
-        }
-    }
-
     private static Long parseLongStr(String str) {
         return str == null ? null : Long.parseLong(str.trim());
     }
@@ -282,9 +206,6 @@ public class Controller {
         return list;
     }
 
-    private static String parseStr(String str) {
-        return str == null ? null : str.trim();
-    }
 
 
     public static class AboutInfo {
