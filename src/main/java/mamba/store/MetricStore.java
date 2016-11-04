@@ -1,6 +1,5 @@
 package mamba.store;
 
-import mamba.entity.TimelinePutResponse;
 import mamba.metrics.*;
 
 import java.io.IOException;

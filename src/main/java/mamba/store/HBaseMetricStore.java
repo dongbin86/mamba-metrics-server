@@ -8,7 +8,6 @@ import mamba.aggregators.TimelineMetricAggregator;
 import mamba.aggregators.TimelineMetricAggregatorFactory;
 import mamba.discovery.TimelineMetricMetadataKey;
 import mamba.discovery.TimelineMetricMetadataManager;
-import mamba.entity.TimelinePutResponse;
 import mamba.function.SeriesAggregateFunction;
 import mamba.function.TimelineMetricsSeriesAggregateFunction;
 import mamba.function.TimelineMetricsSeriesAggregateFunctionFactory;

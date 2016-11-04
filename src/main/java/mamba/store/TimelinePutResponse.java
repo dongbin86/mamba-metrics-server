@@ -1,15 +1,14 @@
-package mamba.entity;
-
+package mamba.store;
 
 import java.util.ArrayList;
 import java.util.List;
 
 /**
- * @author dongbin  @Date: 10/28/16
+ * @author dongbin  @Date: 11/4/16
  */
 public class TimelinePutResponse {
 
-    private List<TimelinePutError> errors = new ArrayList<TimelinePutError>();
+    private List<TimelinePutError> errors = new ArrayList<>();
 
     public TimelinePutResponse() {
 
@@ -91,4 +90,5 @@ public class TimelinePutResponse {
         }
 
     }
+
 }
