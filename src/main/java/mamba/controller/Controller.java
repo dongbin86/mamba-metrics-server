@@ -28,10 +28,6 @@ public class Controller {
 
     public static final Joiner CSV_JOINER = Joiner.on(',');
 
-
-    @Autowired
-    private TimelineStore store;
-
     @Autowired
     private MetricStore metricStore;
 
@@ -41,101 +37,6 @@ public class Controller {
         return new AboutInfo("Timeline API");
     }
 
-    @RequestMapping(value = "/{entityType}", method = RequestMethod.GET)
-    public TimelineEntities getEntities(
-            @PathVariable String entityType,
-            @RequestParam(value = "primaryFilter", required = true) String primaryFilter,
-            @RequestParam(value = "secondaryFilter", required = true) String secondaryFilter,
-            @RequestParam(value = "windowStart", required = true) String windowStart,
-            @RequestParam(value = "windowEnd", required = true) String windowEnd,
-            @RequestParam(value = "fromId", required = true) String fromId,
-            @RequestParam(value = "fromTs", required = true) String fromTs,
-            @RequestParam(value = "limit", required = true) String limit,
-            @RequestParam(value = "fields", required = true) String fields) {
-
-        TimelineEntities entities = null;
-        try {
-            entities = store.getEntities(
-                    parseStr(entityType),
-                    parseLongStr(limit),
-                    parseLongStr(windowStart),
-                    parseLongStr(windowEnd),
-                    parseStr(fromId),
-                    parseLongStr(fromTs),
-                    parsePairStr(primaryFilter, ":"),
-                    parsePairsStr(secondaryFilter, ",", ":"),
-                    parseFieldsStr(fields, ","));
-        } catch (NumberFormatException e) {
-            throw new BadRequestException(
-                    "windowStart, windowEnd or limit is not a numeric value.");
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException("requested invalid field.");
-        } catch (IOException e) {
-            LOG.error("Error getting entities", e);
-            throw new WebApplicationException(e,
-                    Response.Status.INTERNAL_SERVER_ERROR);
-        }
-        if (entities == null) {
-            return new TimelineEntities();
-        }
-        return entities;
-
-    }
-
-    @RequestMapping(value = "/{entityType}/{entityId}", method = RequestMethod.GET)
-    public TimelineEntity getEntity(@PathVariable String entityType,
-                                    @PathVariable String entityId,
-                                    @RequestParam(value = "fields", required = true) String fields) {
-        TimelineEntity entity = null;
-        try {
-            entity =
-                    store.getEntity(parseStr(entityId), parseStr(entityType),
-                            parseFieldsStr(fields, ","));
-        } catch (IllegalArgumentException e) {
-            throw new BadRequestException(
-                    "requested invalid field.");
-        } catch (IOException e) {
-            LOG.error("Error getting entity", e);
-            throw new WebApplicationException(e,
-                    Response.Status.INTERNAL_SERVER_ERROR);
-        }
-        if (entity == null) {
-            throw new WebApplicationException(Response.Status.NOT_FOUND);
-        }
-        return entity;
-    }
-
-    @RequestMapping(value = "/{entityType}/events", method = RequestMethod.GET)
-    public TimelineEvents getEvents(
-            @PathVariable String entityType,
-            @RequestParam(value = "entityId", required = true) String entityId,
-            @RequestParam(value = "eventType", required = true) String eventType,
-            @RequestParam(value = "windowStart", required = true) String windowStart,
-            @RequestParam(value = "windowEnd", required = true) String windowEnd,
-            @RequestParam(value = "limit", required = true) String limit
-    ) {
-        TimelineEvents events = null;
-        try {
-            events = store.getEntityTimelines(
-                    parseStr(entityType),
-                    parseArrayStr(entityId, ","),
-                    parseLongStr(limit),
-                    parseLongStr(windowStart),
-                    parseLongStr(windowEnd),
-                    parseArrayStr(eventType, ","));
-        } catch (NumberFormatException e) {
-            throw new BadRequestException(
-                    "windowStart, windowEnd or limit is not a numeric value.");
-        } catch (IOException e) {
-            LOG.error("Error getting entity timelines", e);
-            throw new WebApplicationException(e,
-                    Response.Status.INTERNAL_SERVER_ERROR);
-        }
-        if (events == null) {
-            return new TimelineEvents();
-        }
-        return events;
-    }
 
 
     @RequestMapping(value = "/metrics", method = RequestMethod.POST)
@@ -261,34 +162,6 @@ public class Controller {
             throw new WebApplicationException(e, Response.Status.INTERNAL_SERVER_ERROR);
         }
 
-    }
-
-    @RequestMapping(method = RequestMethod.POST)
-    @ResponseBody
-    public TimelinePutResponse postEntities(@RequestBody TimelineEntities entities) {
-        if (entities == null) {
-            return new TimelinePutResponse();
-        }
-        try {
-            List<EntityIdentifier> entityIDs = new ArrayList<EntityIdentifier>();
-            for (TimelineEntity entity : entities.getEntities()) {
-                EntityIdentifier entityID =
-                        new EntityIdentifier(entity.getEntityId(), entity.getEntityType());
-                entityIDs.add(entityID);
-                if (LOG.isDebugEnabled()) {
-                    LOG.debug("Storing the entity " + entityID + ", JSON-style content: "
-                            + TimelineUtils.dumpTimelineRecordtoJSON(entity));
-                }
-            }
-            if (LOG.isDebugEnabled()) {
-                LOG.debug("Storing entities: " + CSV_JOINER.join(entityIDs));
-            }
-            return store.put(entities);
-        } catch (IOException e) {
-            LOG.error("Error putting entities", e);
-            throw new WebApplicationException(e,
-                    Response.Status.INTERNAL_SERVER_ERROR);
-        }
     }
 
 
